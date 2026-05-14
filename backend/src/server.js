@@ -1,8 +1,12 @@
+require('dotenv').config()
 const app = require('./app')
 const connectDB = require('./config/db')
-require('dotenv').config()
 
 const PORT = process.env.PORT || 5000
+const MONGO_URI = process.env.MONGO_URI
+
+console.log('PORT:', PORT)
+console.log('MONGO_URI exists:', !!MONGO_URI)
 
 connectDB().then(() => {
   app.listen(PORT, () => {
