@@ -1,6 +1,11 @@
 const mongoose = require('mongoose')
 
 const patientSchema = new mongoose.Schema({
+  historialNumber: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   name: {
     type: String,
     required: [true, 'El nombre es obligatorio'],
@@ -36,12 +41,29 @@ const patientSchema = new mongoose.Schema({
     type: String,
     default: 'Ninguna'
   },
+  origin: {
+    type: String,
+    enum: ['local', 'externo'],
+    default: 'local'
+  },
+  hasHistory: {
+    type: Boolean,
+    default: true
+  },
   active: {
     type: Boolean,
     default: true
   }
 }, {
   timestamps: true
+})
+
+// Generar número de historial automáticamente
+patientSchema.pre('save', async function() {
+  if (!this.historialNumber) {
+    const count = await mongoose.model('Patient').countDocuments()
+    this.historialNumber = `HC-${String(count + 1).padStart(4, '0')}`
+  }
 })
 
 module.exports = mongoose.model('Patient', patientSchema)
