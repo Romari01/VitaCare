@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react'
+import { useTheme } from '../../hooks/useTheme'
 import api from '../../services/api'
 
+const specialties = [
+  'Medicina General', 'Pediatría', 'Ginecología', 'Cardiología',
+  'Traumatología', 'Neurología', 'Oftalmología', 'Dermatología'
+]
+
 export default function Doctors() {
+  const { darkMode } = useTheme()
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    name: '', specialty: '', phone: '', email: '', cmp: ''
-  })
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState({ name: '', specialty: '', phone: '', email: '', cmp: '' })
 
   const fetchDoctors = async () => {
     try {
@@ -25,13 +31,28 @@ export default function Doctors() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/doctors', form)
-      setShowForm(false)
-      setForm({ name: '', specialty: '', phone: '', email: '', cmp: '' })
+      if (editingId) {
+        await api.put(`/doctors/${editingId}`, form)
+      } else {
+        await api.post('/doctors', form)
+      }
+      handleClose()
       fetchDoctors()
     } catch (error) {
       alert(error.response?.data?.message || 'Error al guardar')
     }
+  }
+
+  const handleEdit = (doctor) => {
+    setEditingId(doctor._id)
+    setForm({
+      name: doctor.name || '',
+      specialty: doctor.specialty || '',
+      phone: doctor.phone || '',
+      email: doctor.email || '',
+      cmp: doctor.cmp || ''
+    })
+    setShowForm(true)
   }
 
   const handleDelete = async (id) => {
@@ -40,99 +61,127 @@ export default function Doctors() {
     fetchDoctors()
   }
 
-  const specialties = ['Medicina General', 'Pediatría', 'Ginecología', 'Cardiología', 'Traumatología', 'Neurología', 'Oftalmología', 'Dermatología']
+  const handleClose = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setForm({ name: '', specialty: '', phone: '', email: '', cmp: '' })
+  }
+
+  const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${
+    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
+  }`
 
   return (
-    <div className="p-6">
+    <div className={`p-6 min-h-full transition-colors ${darkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Médicos</h1>
-          <p className="text-slate-500 text-sm">Gestión del personal médico</p>
+          <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Médicos</h1>
+          <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Gestión del personal médico</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-primary-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-800 transition-colors"
-        >
+        <button onClick={() => setShowForm(true)}
+          className="bg-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors shadow-md shadow-teal-500/20">
           + Nuevo Médico
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading ? (
-          <p className="text-slate-400">Cargando...</p>
-        ) : doctors.length === 0 ? (
-          <p className="text-slate-400">No hay médicos registrados</p>
-        ) : doctors.map((d) => (
-          <div key={d._id} className="bg-white rounded-2xl border border-slate-100 p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-bold">
-                  {d.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-medium text-slate-800 text-sm">{d.name}</p>
-                  <p className="text-xs text-slate-400">{d.specialty}</p>
+      {/* Grid de cards */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Cargando...</p>
+        </div>
+      ) : doctors.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <span className="text-4xl">👨‍⚕️</span>
+          <p className={`font-medium ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>No hay médicos registrados</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {doctors.map((d) => (
+            <div key={d._id} className={`rounded-2xl border p-5 transition-all hover:shadow-md ${darkMode ? 'bg-gray-800 border-gray-700 hover:border-teal-500/30' : 'bg-white border-slate-100 hover:border-teal-200'}`}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold">
+                    {d.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>{d.name}</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200 font-medium">
+                      {d.specialty}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <button onClick={() => handleDelete(d._id)} className="text-red-400 hover:text-red-600 text-xs">
-                ✕
-              </button>
+              <div className={`space-y-1 text-xs mb-3 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                {d.phone && <p>📞 {d.phone}</p>}
+                {d.email && <p>✉️ {d.email}</p>}
+                {d.cmp && <p>🏥 CMP: {d.cmp}</p>}
+              </div>
+              <div className={`flex gap-2 pt-3 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
+                <button onClick={() => handleEdit(d)}
+                  className={`flex-1 text-xs py-1.5 rounded-lg border transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  Editar
+                </button>
+                <button onClick={() => handleDelete(d._id)}
+                  className="flex-1 text-xs py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                  Eliminar
+                </button>
+              </div>
             </div>
-            <div className="space-y-1 text-xs text-slate-500">
-              {d.phone && <p>📞 {d.phone}</p>}
-              {d.email && <p>✉️ {d.email}</p>}
-              {d.cmp && <p>🏥 CMP: {d.cmp}</p>}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
+      {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-800">Nuevo Médico</h2>
-              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl p-6 w-full max-w-md shadow-xl ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                {editingId ? 'Editar Médico' : 'Nuevo Médico'}
+              </h2>
+              <button onClick={handleClose}
+                className={`text-xl ${darkMode ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Nombre completo</label>
-                <input required value={form.name} onChange={(e) => setForm({...form, name: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Nombre completo</label>
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Ej: Dr. Juan Pérez" className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Especialidad</label>
-                <select required value={form.specialty} onChange={(e) => setForm({...form, specialty: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Especialidad</label>
+                <select required value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} className={inputClass}>
                   <option value="">Seleccionar...</option>
                   {specialties.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Teléfono</label>
-                  <input value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Teléfono</label>
+                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="987654321" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">CMP</label>
-                  <input value={form.cmp} onChange={(e) => setForm({...form, cmp: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>CMP</label>
+                  <input value={form.cmp} onChange={(e) => setForm({ ...form, cmp: e.target.value })}
+                    placeholder="12345" className={inputClass} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Email</label>
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="doctor@vitacare.com" className={inputClass} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 border border-slate-200 text-slate-600 py-2 rounded-xl text-sm hover:bg-slate-50">
+                <button type="button" onClick={handleClose}
+                  className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   Cancelar
                 </button>
                 <button type="submit"
-                  className="flex-1 bg-primary-600 text-white py-2 rounded-xl text-sm hover:bg-primary-800">
-                  Guardar
+                  className="flex-1 bg-teal-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors">
+                  {editingId ? 'Actualizar' : 'Guardar'}
                 </button>
               </div>
             </form>
