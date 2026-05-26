@@ -1,9 +1,18 @@
 const Appointment = require('../models/Appointment')
+const Patient = require('../models/Patient')
 
 const getAppointments = async (req, res) => {
   try {
     const { date, status, doctor } = req.query
     let query = {}
+
+    // Si es paciente, solo ve SUS citas
+    if (req.user.role === 'paciente') {
+      const patient = await Patient.findOne({ dni: req.user.dni })
+      if (!patient) return res.json([])
+      query.patient = patient._id
+    }
+
     if (date) query.date = { $gte: new Date(date), $lt: new Date(new Date(date).setDate(new Date(date).getDate() + 1)) }
     if (status) query.status = status
     if (doctor) query.doctor = doctor
@@ -49,6 +58,22 @@ const createAppointment = async (req, res) => {
   }
 }
 
+// Ruta especial — todas las citas para ver disponibilidad del calendario
+const getPublicAvailability = async (req, res) => {
+  try {
+    const { doctor } = req.query
+    let query = { status: { $ne: 'cancelada' } }
+    if (doctor) query.doctor = doctor
+    const appointments = await Appointment.find(query)
+      .select('date time doctor status')
+      .populate('doctor', 'name specialty')
+      .sort({ date: 1, time: 1 })
+    res.json(appointments)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
 const updateAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findByIdAndUpdate(
@@ -70,4 +95,4 @@ const deleteAppointment = async (req, res) => {
   }
 }
 
-module.exports = { getAppointments, getAppointmentById, createAppointment, updateAppointment, deleteAppointment }
+module.exports = { getAppointments, getAppointmentById, createAppointment, updateAppointment, deleteAppointment, getPublicAvailability }

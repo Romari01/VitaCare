@@ -9,6 +9,7 @@ const appointmentRoutes = require('./routes/appointmentRoutes')
 const medicalRecordRoutes = require('./routes/medicalRecordRoutes')
 const statsRoutes = require('./routes/statsRoutes')
 const reportRoutes = require('./routes/reportRoutes')
+const userRoutes = require('./routes/userRoutes')
 const errorHandler = require('./middleware/errorHandler')
 const publicRoutes = require('./routes/publicRoutes')
 
@@ -35,6 +36,7 @@ app.use('/api/appointments', appointmentRoutes)
 app.use('/api/records', medicalRecordRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/reports', reportRoutes)
+app.use('/api/users', userRoutes)
 app.use('/api/public', publicRoutes)
 
 app.get('/', (req, res) => {

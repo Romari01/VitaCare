@@ -21,6 +21,11 @@ const patientSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
   address: {
     type: String,
     trim: true
@@ -30,16 +35,24 @@ const patientSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['masculino', 'femenino', 'otro'],
-    required: true
+    enum: ['masculino', 'femenino', 'otro', ''],
+    default: ''
   },
   bloodType: {
     type: String,
-    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', '']
   },
   allergies: {
     type: String,
     default: 'Ninguna'
+  },
+  emergencyContact: {
+    type: String,
+    trim: true
+  },
+  occupation: {
+    type: String,
+    trim: true
   },
   origin: {
     type: String,
