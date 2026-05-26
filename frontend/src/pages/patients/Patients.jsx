@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../hooks/useTheme'
 import api from '../../services/api'
 
+const RENIEC_TOKEN = 'sk_15690.FFtrHeVvhixdTKHznI2jUrXwYyvmBI6C'
+
 export default function Patients() {
   const { user } = useAuth()
   const { darkMode } = useTheme()
@@ -11,8 +13,11 @@ export default function Patients() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingPatient, setEditingPatient] = useState(null)
+  const [loadingDni, setLoadingDni] = useState(false)
+  const [dniStatus, setDniStatus] = useState(null)
   const [form, setForm] = useState({
-    name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local'
+    name: '', dni: '', phone: '', email: '',
+    birthDate: '', gender: '', address: '', origin: 'local'
   })
 
   const fetchPatients = async () => {
@@ -28,6 +33,69 @@ export default function Patients() {
 
   useEffect(() => { fetchPatients() }, [])
 
+  const handleDniSearch = async (e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (!['admin', 'admision'].includes(user?.role)) return
+
+    const dni = form.dni.trim()
+    if (dni.length !== 8) {
+      alert('El DNI debe tener 8 dígitos')
+      return
+    }
+
+    setLoadingDni(true)
+    setDniStatus(null)
+
+    try {
+      // 1. Buscar en nuestra base de datos
+      const { data: allPatients } = await api.get('/patients')
+      const existing = allPatients.find(p => String(p.dni).trim() === String(dni).trim())
+
+      if (existing) {
+        setForm({
+          name: existing.name || '',
+          dni: existing.dni || '',
+          phone: existing.phone || '',
+          email: existing.email || '',
+          birthDate: existing.birthDate?.split('T')[0] || '',
+          gender: existing.gender || '',
+          address: existing.address || '',
+          origin: existing.origin || 'local'
+        })
+        setDniStatus('found')
+        return
+      }
+
+      // 2. Buscar en RENIEC via backend para evitar CORS
+      try {
+        const { data: reniecData } = await api.get(`/public/reniec/${dni}`)
+        if (reniecData?.nombres) {
+          const nombreCompleto = `${reniecData.nombres} ${reniecData.apellidoPaterno} ${reniecData.apellidoMaterno}`.trim()
+          setForm(f => ({
+            ...f,
+            name: nombreCompleto,
+            gender: reniecData.sexo === 'M' ? 'masculino'
+              : reniecData.sexo === 'F' ? 'femenino' : '',
+          }))
+          setDniStatus('reniec')
+          return
+        }
+      } catch (reniecErr) {
+        console.log('RENIEC no disponible:', reniecErr.message)
+      }
+
+      // 3. No encontrado
+      setDniStatus('new')
+
+    } catch (err) {
+      console.error('Error búsqueda DNI:', err)
+      setDniStatus('new')
+    } finally {
+      setLoadingDni(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
@@ -36,9 +104,7 @@ export default function Patients() {
       } else {
         await api.post('/patients', form)
       }
-      setShowForm(false)
-      setEditingPatient(null)
-      setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' })
+      handleCloseForm()
       fetchPatients()
     } catch (error) {
       alert(error.response?.data?.message || 'Error al guardar paciente')
@@ -47,6 +113,7 @@ export default function Patients() {
 
   const handleEdit = (patient) => {
     setEditingPatient(patient)
+    setDniStatus(null)
     setForm({
       name: patient.name || '',
       dni: patient.dni || '',
@@ -70,6 +137,13 @@ export default function Patients() {
     }
   }
 
+  const handleCloseForm = () => {
+    setShowForm(false)
+    setEditingPatient(null)
+    setDniStatus(null)
+    setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' })
+  }
+
   const filtered = patients.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
     p.dni?.includes(search)
@@ -78,9 +152,11 @@ export default function Patients() {
   const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${
     darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
   }`
+  const labelClass = `block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`
 
   return (
     <div className={`p-6 min-h-full transition-colors ${darkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -88,7 +164,7 @@ export default function Patients() {
           <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Gestión de pacientes registrados</p>
         </div>
         {['admin', 'admision'].includes(user?.role) && (
-          <button onClick={() => { setShowForm(true); setEditingPatient(null); setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' }) }}
+          <button onClick={() => { setShowForm(true); setEditingPatient(null); setDniStatus(null); setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' }) }}
             className="bg-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors shadow-md shadow-teal-500/20">
             + Nuevo Paciente
           </button>
@@ -97,13 +173,9 @@ export default function Patients() {
 
       {/* Buscador */}
       <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por nombre o DNI..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className={inputClass}
-        />
+        <input type="text" placeholder="Buscar por nombre o DNI..."
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          className={inputClass} />
       </div>
 
       {/* Tabla */}
@@ -152,7 +224,7 @@ export default function Patients() {
                 <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{p.phone}</td>
                 <td className="px-6 py-4">
                   <span className="text-xs px-2 py-1 rounded-full bg-teal-50 text-teal-700 font-medium border border-teal-200">
-                    {p.recordNumber || 'HC-????'}
+                    {p.historialNumber || p.recordNumber || 'HC-????'}
                   </span>
                 </td>
                 <td className="px-6 py-4">
@@ -194,45 +266,131 @@ export default function Patients() {
               <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
                 {editingPatient ? 'Editar Paciente' : 'Nuevo Paciente'}
               </h2>
-              <button onClick={() => { setShowForm(false); setEditingPatient(null) }}
+              <button onClick={handleCloseForm}
                 className={`text-xl ${darkMode ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>✕</button>
             </div>
+
             <form onSubmit={handleSubmit} className="space-y-3">
-              {[
-                { label: 'Nombre completo', key: 'name', type: 'text', placeholder: 'Ej: María López García' },
-                { label: 'DNI', key: 'dni', type: 'text', placeholder: 'Ej: 45678901' },
-                { label: 'Teléfono', key: 'phone', type: 'text', placeholder: 'Ej: 987654321' },
-                { label: 'Email', key: 'email', type: 'email', placeholder: 'Ej: correo@gmail.com' },
-                { label: 'Fecha de nacimiento', key: 'birthDate', type: 'date' },
-                { label: 'Dirección', key: 'address', type: 'text', placeholder: 'Ej: Jr. Ancash 179' },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key}>
-                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>{label}</label>
-                  <input type={type} placeholder={placeholder} value={form[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    className={inputClass} />
+
+              {/* DNI */}
+              <div>
+                <label className={labelClass}>
+                  DNI
+                  {['admin', 'admision'].includes(user?.role) && !editingPatient && (
+                    <span className={`ml-2 text-xs font-normal ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                      — Presiona Enter para buscar
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Ej: 45678901"
+                    value={form.dni}
+                    maxLength={8}
+                    onChange={(e) => {
+                      const newDni = e.target.value
+                      if (newDni === '') {
+                        setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' })
+                      } else {
+                        setForm({ ...form, dni: newDni })
+                      }
+                      setDniStatus(null)
+                    }}
+                    onKeyDown={handleDniSearch}
+                    className={inputClass}
+                  />
+                  {loadingDni && (
+                    <div className="absolute right-3 top-2.5">
+                      <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
-              ))}
+
+                {dniStatus === 'found' && (
+                  <div className="mt-2 text-xs text-teal-600 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
+                    ✅ Paciente encontrado — datos cargados automáticamente
+                  </div>
+                )}
+                {dniStatus === 'reniec' && (
+                  <div className="mt-2 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                    🏛️ Datos obtenidos de RENIEC — completa los datos restantes
+                  </div>
+                )}
+                {dniStatus === 'new' && (
+                  <div className="mt-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                    🆕 DNI no encontrado — ingresa los datos manualmente
+                  </div>
+                )}
+              </div>
+
+              {/* Nombre */}
+              <div>
+                <label className={labelClass}>Nombre completo</label>
+                <input type="text" placeholder="Ej: María López García"
+                  value={form.name} required
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className={inputClass} />
+              </div>
+
+              {/* Teléfono y Email */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Género</label>
-                  <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className={inputClass}>
+                  <label className={labelClass}>Teléfono</label>
+                  <input type="text" placeholder="987654321" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Email</label>
+                  <input type="email" placeholder="correo@gmail.com" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className={inputClass} />
+                </div>
+              </div>
+
+              {/* Fecha y Género */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Fecha de nacimiento</label>
+                  <input type="date" value={form.birthDate}
+                    onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+                    className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Género</label>
+                  <select value={form.gender}
+                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                    className={inputClass}>
                     <option value="">Seleccionar...</option>
                     <option value="masculino">Masculino</option>
                     <option value="femenino">Femenino</option>
                     <option value="otro">Otro</option>
                   </select>
                 </div>
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Origen</label>
-                  <select value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })} className={inputClass}>
-                    <option value="local">Local</option>
-                    <option value="externo">Externo</option>
-                  </select>
-                </div>
               </div>
+
+              {/* Dirección */}
+              <div>
+                <label className={labelClass}>Dirección</label>
+                <input type="text" placeholder="Ej: Jr. Ancash 179" value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className={inputClass} />
+              </div>
+
+              {/* Origen */}
+              <div>
+                <label className={labelClass}>Origen</label>
+                <select value={form.origin}
+                  onChange={(e) => setForm({ ...form, origin: e.target.value })}
+                  className={inputClass}>
+                  <option value="local">Local</option>
+                  <option value="externo">Externo</option>
+                </select>
+              </div>
+
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => { setShowForm(false); setEditingPatient(null) }}
+                <button type="button" onClick={handleCloseForm}
                   className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   Cancelar
                 </button>

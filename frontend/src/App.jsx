@@ -13,12 +13,18 @@ import Profile from './pages/profile/Profile'
 import MainLayout from './layouts/MainLayout'
 import MyAppointments from './pages/patient/MyAppointments'
 import PatientChatbot from './pages/patient/PatientChatbot'
+import Usuarios from './pages/admin/Usuarios'
+import Asistentes from './pages/admin/Asistentes'
+import Consultorios from './pages/admin/Consultorios'
+import Horarios from './pages/admin/Horarios'
+import Pagos from './pages/admin/Pagos'
+import Configuraciones from './pages/admin/Configuraciones'
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Landing page — antes del login */}
+        {/* Landing page */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
@@ -70,6 +76,40 @@ function App() {
         <Route path="/chatbot" element={
           <ProtectedRoute roles={['admin', 'admision', 'doctor']}>
             <MainLayout><Chatbot /></MainLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Solo admin */}
+        <Route path="/configuraciones" element={
+          <ProtectedRoute roles={['admin']}>
+            <MainLayout><Configuraciones /></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/usuarios" element={
+          <ProtectedRoute roles={['admin']}>
+            <MainLayout><Usuarios /></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/asistentes" element={
+          <ProtectedRoute roles={['admin']}>
+            <MainLayout><Asistentes /></MainLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Admin y admision */}
+        <Route path="/consultorios" element={
+          <ProtectedRoute roles={['admin', 'admision']}>
+            <MainLayout><Consultorios /></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/horarios" element={
+          <ProtectedRoute roles={['admin', 'admision']}>
+            <MainLayout><Horarios /></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/pagos" element={
+          <ProtectedRoute roles={['admin', 'admision']}>
+            <MainLayout><Pagos /></MainLayout>
           </ProtectedRoute>
         } />
 

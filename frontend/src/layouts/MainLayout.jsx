@@ -68,9 +68,10 @@ export default function MainLayout({ children }) {
     navigate('/login')
   }
 
+  // ← ÚNICO CAMBIO: /appointments → /appointments/availability
   const handleOpenForm = async () => {
     try {
-      const { data } = await api.get('/appointments')
+      const { data } = await api.get('/appointments/availability')
       setAppointments(data)
     } catch (e) { console.error(e) }
     setShowForm(true)
@@ -129,17 +130,31 @@ export default function MainLayout({ children }) {
 
   const allNavItems = [
     { path: '/dashboard', label: 'Inicio', icon: '🏠', roles: ['admin', 'doctor', 'admision', 'paciente'] },
-    { path: '/patients', label: 'Pacientes', icon: '👥', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/configuraciones', label: 'Configuraciones', icon: '⚙️', roles: ['admin'] },
+    { path: '/usuarios', label: 'Usuarios', icon: '👥', roles: ['admin'] },
+    { path: '/asistentes', label: 'Asistentes', icon: '👩‍💼', roles: ['admin'] },
+    { path: '/patients', label: 'Pacientes', icon: '🧑‍🤝‍🧑', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/consultorios', label: 'Consultorios', icon: '🏥', roles: ['admin', 'admision'] },
     { path: '/doctors', label: 'Médicos', icon: '👨‍⚕️', roles: ['admin', 'admision'] },
-    { path: '/appointments', label: 'Citas', icon: '📅', roles: ['admin', 'admision', 'doctor'] },
-    { path: '/my-appointments', label: 'Mis Citas', icon: '📅', roles: ['paciente'] },
-    { path: '/reports', label: 'Reportes', icon: '📄', roles: ['admin', 'admision'] },
+    { path: '/horarios', label: 'Horarios', icon: '🕐', roles: ['admin', 'admision'] },
+    { path: '/appointments', label: 'Reservas', icon: '📅', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/reports', label: 'Historial Clínico', icon: '📋', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/pagos', label: 'Pagos', icon: '💰', roles: ['admin', 'admision'] },
     { path: '/chatbot', label: 'Chatbot', icon: '🤖', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/my-appointments', label: 'Mis Citas', icon: '📅', roles: ['paciente'] },
     { path: '/asistente', label: 'Asistente', icon: '🤖', roles: ['paciente'] },
     { path: '/profile', label: 'Mi Perfil', icon: '👤', roles: ['admin', 'doctor', 'admision', 'paciente'] },
   ]
 
   const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
+
+  const linkClass = (path) => `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+    location.pathname === path
+      ? 'bg-teal-50 text-teal-600'
+      : darkMode
+      ? 'text-gray-300 hover:bg-gray-700'
+      : 'text-slate-600 hover:bg-slate-50'
+  }`
 
   return (
     <div className={`flex min-h-screen transition-colors ${darkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
@@ -147,9 +162,9 @@ export default function MainLayout({ children }) {
       {/* SIDEBAR */}
       <aside className={`w-64 border-r flex flex-col transition-colors ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100'}`}>
 
-        {/* Logo */}
-        <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
-          <div className="flex items-center gap-3">
+        {/* Logo + rol */}
+        <div className={`p-5 border-b ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
+          <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">V</span>
             </div>
@@ -158,29 +173,25 @@ export default function MainLayout({ children }) {
               <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Jorge Chávez</p>
             </div>
           </div>
+          <div className={`text-xs font-semibold px-2 py-1 rounded-lg capitalize ${darkMode ? 'bg-gray-700 text-teal-400' : 'bg-teal-50 text-teal-600'}`}>
+            {user?.role === 'admin' ? '🔑 Administrador' :
+             user?.role === 'admision' ? '🖥️ Admisión' :
+             user?.role === 'doctor' ? '👨‍⚕️ Doctor' : '🧑 Paciente'}
+          </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-4 space-y-1">
+        {/* Nav con scroll */}
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => (
             <div key={item.path}>
-              <Link to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  location.pathname === item.path
-                    ? 'bg-teal-50 text-teal-600'
-                    : darkMode
-                    ? 'text-gray-300 hover:bg-gray-700'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}>
+              <Link to={item.path} className={linkClass(item.path)}>
                 <span>{item.icon}</span>
                 {item.label}
               </Link>
-
-              {/* Reservar Cita justo después de Inicio, solo paciente */}
               {item.path === '/dashboard' && user?.role === 'paciente' && (
                 <button
                   onClick={handleOpenForm}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mt-1 ${
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mt-0.5 ${
                     showForm
                       ? 'bg-teal-50 text-teal-600'
                       : darkMode
@@ -195,15 +206,13 @@ export default function MainLayout({ children }) {
           ))}
         </nav>
 
-        {/* Toggle modo oscuro + usuario + logout */}
-        <div className={`p-4 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
-
-          {/* Toggle dark mode */}
+        {/* Bottom */}
+        <div className={`p-3 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
           <button onClick={toggle}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-1 ${
               darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-slate-600 hover:bg-slate-50'
             }`}>
-            <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${darkMode ? 'bg-teal-500' : 'bg-gray-300'}`}>
+            <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 flex-shrink-0 ${darkMode ? 'bg-teal-500' : 'bg-gray-300'}`}>
               <span className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 flex items-center justify-center text-xs ${darkMode ? 'left-5 bg-gray-900' : 'left-0.5 bg-white'}`}>
                 {darkMode ? '🌙' : '☀️'}
               </span>
@@ -211,9 +220,8 @@ export default function MainLayout({ children }) {
             <span>{darkMode ? 'Modo oscuro' : 'Modo claro'}</span>
           </button>
 
-          {/* Usuario */}
-          <div className="flex items-center gap-3 px-4 py-2 mb-2">
-            <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+          <div className={`flex items-center gap-3 px-4 py-2 mb-1 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-slate-50'}`}>
+            <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-teal-600 text-sm font-bold">{user?.name?.charAt(0)}</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -222,9 +230,8 @@ export default function MainLayout({ children }) {
             </div>
           </div>
 
-          {/* Logout */}
           <button onClick={handleLogout}
-            className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium">
             🚪 Cerrar sesión
           </button>
         </div>
@@ -239,9 +246,7 @@ export default function MainLayout({ children }) {
       {showForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto">
           <div className="w-full max-w-6xl flex gap-6 pb-8">
-
             <div className="flex-1 flex flex-col gap-4">
-
               <div className="bg-teal-700 rounded-2xl px-6 py-5 flex items-center justify-between">
                 <div>
                   <h2 className="text-white text-xl font-bold">Reservar Cita Médica</h2>
@@ -449,7 +454,6 @@ export default function MainLayout({ children }) {
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       )}
