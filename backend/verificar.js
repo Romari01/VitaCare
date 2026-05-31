@@ -1,0 +1,15 @@
+const mongoose = require('mongoose')
+const bcrypt = require('bcryptjs')
+require('dotenv').config()
+
+mongoose.connect(process.env.MONGO_URI).then(async () => {
+    const User = require('./src/models/User')
+    const user = await User.findOne({ email: 'romarioquispe214@gmail.com' })
+    console.log('Usuario:', user?.name)
+    console.log('Role:', user?.role)
+    console.log('isVerified:', user?.isVerified)
+    console.log('active:', user?.active)
+    const match = await bcrypt.compare('roma123', user?.password)
+    console.log('Password match:', match)
+    process.exit()
+})
