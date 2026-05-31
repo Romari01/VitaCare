@@ -37,17 +37,11 @@ export default function LandingPage() {
 
   const especialidades = [
     { icon: "🩺", name: "Medicina General" },
-    { icon: "❤️", name: "Cardiología" },
-    { icon: "👶", name: "Pediatría" },
-    { icon: "🦴", name: "Traumatología" },
-    { icon: "🧠", name: "Neurología" },
-    { icon: "🌸", name: "Ginecología" },
-    { icon: "🔬", name: "Dermatología" },
-    { icon: "🦷", name: "Odontología" },
-    { icon: "👁️", name: "Oftalmología" },
     { icon: "🥗", name: "Nutrición" },
-    { icon: "🧩", name: "Psicología" },
-    { icon: "➕", name: "Ver Más" },
+    { icon: "🧠", name: "Psicología" },
+    { icon: "🦷", name: "Odontología" },
+    { icon: "💉", name: "Enfermería" },
+    { icon: "🌸", name: "Obstetricia" },
   ];
 
   const steps = [
@@ -75,7 +69,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8">
             {["Funcionalidades", "Especialidades", "Cómo funciona", "Acerca de"].map((item) => (
               <a key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "-").replace(/[áéíóú]/g, (c) => ({ á:"a",é:"e",í:"i",ó:"o",ú:"u" })[c])}`}
+                href={`#${item.toLowerCase().replace(/\s+/g, "-").replace(/[áéíóú]/g, (c) => ({ á: "a", é: "e", í: "i", ó: "o", ú: "u" })[c])}`}
                 className={`text-sm font-medium transition-colors ${darkMode ? "text-gray-300 hover:text-teal-400" : "text-gray-600 hover:text-teal-600"}`}>
                 {item}
               </a>
@@ -86,9 +80,7 @@ export default function LandingPage() {
             <button onClick={() => setDarkMode(!darkMode)}
               className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${darkMode ? "bg-teal-500" : "bg-gray-200"}`}
               aria-label="Cambiar tema">
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-300 flex items-center justify-center text-xs ${darkMode ? "left-6 bg-gray-900" : "left-0.5 bg-white"}`}>
-                {darkMode ? "🌙" : "☀️"}
-              </span>
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-300 shadow-sm ${darkMode ? "left-6 bg-gray-900" : "left-0.5 bg-white"}`} />
             </button>
             <button onClick={() => navigate("/login")}
               className={`hidden md:block text-sm font-medium px-4 py-2 rounded-lg transition-colors ${darkMode ? "text-gray-300 hover:text-white" : "text-gray-600 hover:text-gray-900"}`}>
@@ -147,7 +139,11 @@ export default function LandingPage() {
               </button>
             </div>
             <div className="mt-12 flex flex-wrap gap-8">
-              {[{ num: "50+", label: "Pacientes diarios" }, { num: "6", label: "Especialidades" }, { num: "100%", label: "Digital y en línea" }].map((s) => (
+              {[
+                { num: "50+", label: "Pacientes diarios" },
+                { num: "6", label: "Especialidades" },
+                { num: "100%", label: "Digital y en línea" }
+              ].map((s) => (
                 <div key={s.label}>
                   <div className="text-2xl font-bold text-teal-500">{s.num}</div>
                   <div className={`text-sm ${darkMode ? "text-gray-500" : "text-gray-400"}`}>{s.label}</div>
@@ -224,27 +220,17 @@ export default function LandingPage() {
               Profesionales en diversas áreas para cuidar tu salud integral
             </p>
           </div>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {especialidades.map((esp) => (
               <button
                 key={esp.name}
                 onClick={() => navigate("/login")}
-                className={`flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-md ${
-                  esp.name === "Ver Más"
-                    ? darkMode
-                      ? "border-dashed border-gray-600 text-gray-400 hover:border-teal-500 hover:text-teal-400"
-                      : "border-dashed border-gray-300 text-gray-400 hover:border-teal-400 hover:text-teal-600"
-                    : darkMode
+                className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-md ${darkMode
                     ? "bg-gray-800/50 border-gray-700/60 hover:border-teal-500/40 hover:shadow-teal-500/5"
                     : "bg-white border-gray-200 hover:border-teal-300 hover:shadow-teal-50"
-                }`}
-              >
-                <span className="text-3xl">{esp.icon}</span>
-                <span className={`text-xs font-medium text-center leading-tight ${
-                  esp.name === "Ver Más"
-                    ? darkMode ? "text-gray-400" : "text-gray-400"
-                    : darkMode ? "text-gray-300" : "text-gray-700"
-                }`}>
+                  }`}>
+                <span className="text-4xl">{esp.icon}</span>
+                <span className={`text-xs font-medium text-center leading-tight ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                   {esp.name}
                 </span>
               </button>

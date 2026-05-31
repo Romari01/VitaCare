@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../hooks/useTheme'
 import api from '../../services/api'
-
-const RENIEC_TOKEN = 'sk_15690.FFtrHeVvhixdTKHznI2jUrXwYyvmBI6C'
+import Toast from '../../components/Toast'
+import useToast from '../../hooks/useToast'
 
 export default function Patients() {
   const { user } = useAuth()
   const { darkMode } = useTheme()
+  const { toast, showToast, hideToast } = useToast()
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -17,7 +18,8 @@ export default function Patients() {
   const [dniStatus, setDniStatus] = useState(null)
   const [form, setForm] = useState({
     name: '', dni: '', phone: '', email: '',
-    birthDate: '', gender: '', address: '', origin: 'local'
+    birthDate: '', gender: '', address: '', origin: 'local',
+    historialAuto: true, historialNumber: ''
   })
 
   const fetchPatients = async () => {
@@ -40,7 +42,7 @@ export default function Patients() {
 
     const dni = form.dni.trim()
     if (dni.length !== 8) {
-      alert('El DNI debe tener 8 dígitos')
+      showToast('El DNI debe tener 8 dígitos', 'warning')
       return
     }
 
@@ -48,7 +50,6 @@ export default function Patients() {
     setDniStatus(null)
 
     try {
-      // 1. Buscar en nuestra base de datos
       const { data: allPatients } = await api.get('/patients')
       const existing = allPatients.find(p => String(p.dni).trim() === String(dni).trim())
 
@@ -61,13 +62,14 @@ export default function Patients() {
           birthDate: existing.birthDate?.split('T')[0] || '',
           gender: existing.gender || '',
           address: existing.address || '',
-          origin: existing.origin || 'local'
+          origin: existing.origin || 'local',
+          historialAuto: true,
+          historialNumber: existing.historialNumber || ''
         })
         setDniStatus('found')
         return
       }
 
-      // 2. Buscar en RENIEC via backend para evitar CORS
       try {
         const { data: reniecData } = await api.get(`/public/reniec/${dni}`)
         if (reniecData?.nombres) {
@@ -85,7 +87,6 @@ export default function Patients() {
         console.log('RENIEC no disponible:', reniecErr.message)
       }
 
-      // 3. No encontrado
       setDniStatus('new')
 
     } catch (err) {
@@ -99,15 +100,21 @@ export default function Patients() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const payload = { ...form }
+      delete payload.historialAuto
+      if (form.historialAuto && !editingPatient) delete payload.historialNumber
+
       if (editingPatient) {
-        await api.put(`/patients/${editingPatient._id}`, form)
+        await api.put(`/patients/${editingPatient._id}`, payload)
+        showToast('Paciente actualizado correctamente', 'success')
       } else {
-        await api.post('/patients', form)
+        await api.post('/patients', payload)
+        showToast('Paciente registrado correctamente', 'success')
       }
       handleCloseForm()
       fetchPatients()
     } catch (error) {
-      alert(error.response?.data?.message || 'Error al guardar paciente')
+      showToast(error.response?.data?.message || 'Error al guardar paciente', 'error')
     }
   }
 
@@ -122,7 +129,9 @@ export default function Patients() {
       birthDate: patient.birthDate?.split('T')[0] || '',
       gender: patient.gender || '',
       address: patient.address || '',
-      origin: patient.origin || 'local'
+      origin: patient.origin || 'local',
+      historialAuto: false,
+      historialNumber: patient.historialNumber || ''
     })
     setShowForm(true)
   }
@@ -132,8 +141,9 @@ export default function Patients() {
     try {
       await api.delete(`/patients/${id}`)
       fetchPatients()
+      showToast('Paciente eliminado correctamente', 'success')
     } catch (error) {
-      alert('Error al eliminar')
+      showToast('Error al eliminar', 'error')
     }
   }
 
@@ -141,7 +151,11 @@ export default function Patients() {
     setShowForm(false)
     setEditingPatient(null)
     setDniStatus(null)
-    setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' })
+    setForm({
+      name: '', dni: '', phone: '', email: '',
+      birthDate: '', gender: '', address: '', origin: 'local',
+      historialAuto: true, historialNumber: ''
+    })
   }
 
   const filtered = patients.filter(p =>
@@ -149,9 +163,8 @@ export default function Patients() {
     p.dni?.includes(search)
   )
 
-  const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${
-    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
-  }`
+  const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
+    }`
   const labelClass = `block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`
 
   return (
@@ -164,7 +177,7 @@ export default function Patients() {
           <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Gestión de pacientes registrados</p>
         </div>
         {['admin', 'admision'].includes(user?.role) && (
-          <button onClick={() => { setShowForm(true); setEditingPatient(null); setDniStatus(null); setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' }) }}
+          <button onClick={() => { setShowForm(true); setEditingPatient(null); setDniStatus(null); setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local', historialAuto: true, historialNumber: '' }) }}
             className="bg-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors shadow-md shadow-teal-500/20">
             + Nuevo Paciente
           </button>
@@ -184,78 +197,77 @@ export default function Patients() {
           <h2 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Lista de pacientes</h2>
           <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{filtered.length} paciente(s)</span>
         </div>
-        <table className="w-full">
-          <thead className={`border-b ${darkMode ? 'bg-gray-700/50 border-gray-700' : 'bg-slate-50 border-slate-100'}`}>
-            <tr>
-              {['Paciente', 'DNI', 'Teléfono', 'N° Historial', 'Origen', 'Acciones'].map(h => (
-                <th key={h} className={`text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-slate-50'}`}>
-            {loading ? (
-              <tr><td colSpan="6" className="text-center py-12">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                  <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Cargando...</span>
-                </div>
-              </td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan="6" className="text-center py-12">
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-4xl">👥</span>
-                  <p className={`font-medium ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>No se encontraron pacientes</p>
-                </div>
-              </td></tr>
-            ) : filtered.map((p) => (
-              <tr key={p._id} className={`transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-slate-50'}`}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-bold text-xs">
-                      {p.name?.charAt(0)}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>{p.name}</p>
-                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{p.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{p.dni}</td>
-                <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{p.phone}</td>
-                <td className="px-6 py-4">
-                  <span className="text-xs px-2 py-1 rounded-full bg-teal-50 text-teal-700 font-medium border border-teal-200">
-                    {p.historialNumber || p.recordNumber || 'HC-????'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    p.origin === 'externo'
-                      ? 'bg-purple-50 text-purple-600 border border-purple-200'
-                      : 'bg-blue-50 text-blue-600 border border-blue-200'
-                  }`}>
-                    {p.origin === 'externo' ? 'Externo' : 'Local'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    {['admin', 'admision'].includes(user?.role) && (
-                      <>
-                        <button onClick={() => handleEdit(p)}
-                          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                          Editar
-                        </button>
-                        <button onClick={() => handleDelete(p._id)}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className={`border-b ${darkMode ? 'bg-gray-700/50 border-gray-700' : 'bg-slate-50 border-slate-100'}`}>
+              <tr>
+                {['Paciente', 'DNI', 'Teléfono', 'N° Historial', 'Origen', 'Acciones'].map(h => (
+                  <th key={h} className={`text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-slate-50'}`}>
+              {loading ? (
+                <tr><td colSpan="6" className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Cargando...</span>
+                  </div>
+                </td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan="6" className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-4xl">👥</span>
+                    <p className={`font-medium ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>No se encontraron pacientes</p>
+                  </div>
+                </td></tr>
+              ) : filtered.map((p) => (
+                <tr key={p._id} className={`transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-slate-50'}`}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold text-xs">
+                        {p.name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>{p.name}</p>
+                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{p.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className={`px-6 py-4 text-sm whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{p.dni}</td>
+                  <td className={`px-6 py-4 text-sm whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>{p.phone || '—'}</td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs px-2 py-1 rounded-full bg-teal-50 text-teal-700 font-medium border border-teal-200 whitespace-nowrap">
+                      {p.historialNumber || 'HC-????'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${p.origin === 'externo'
+                        ? 'bg-purple-50 text-purple-600 border border-purple-200'
+                        : 'bg-blue-50 text-blue-600 border border-blue-200'
+                      }`}>
+                      {p.origin === 'externo' ? 'Externo' : 'Local'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {['admin', 'admision'].includes(user?.role) && (
+                        <>
+                          <button onClick={() => handleEdit(p)}
+                            className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 flex items-center justify-center transition-colors"
+                            title="Editar">✏️</button>
+                          <button onClick={() => handleDelete(p._id)}
+                            className="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors"
+                            title="Eliminar">🗑️</button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}
@@ -283,30 +295,25 @@ export default function Patients() {
                   )}
                 </label>
                 <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Ej: 45678901"
-                    value={form.dni}
-                    maxLength={8}
+                  <input type="text" placeholder="Ej: 45678901"
+                    value={form.dni} maxLength={8}
                     onChange={(e) => {
                       const newDni = e.target.value
                       if (newDni === '') {
-                        setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local' })
+                        setForm({ name: '', dni: '', phone: '', email: '', birthDate: '', gender: '', address: '', origin: 'local', historialAuto: true, historialNumber: '' })
                       } else {
                         setForm({ ...form, dni: newDni })
                       }
                       setDniStatus(null)
                     }}
                     onKeyDown={handleDniSearch}
-                    className={inputClass}
-                  />
+                    className={inputClass} />
                   {loadingDni && (
                     <div className="absolute right-3 top-2.5">
                       <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
-
                 {dniStatus === 'found' && (
                   <div className="mt-2 text-xs text-teal-600 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
                     ✅ Paciente encontrado — datos cargados automáticamente
@@ -321,6 +328,42 @@ export default function Patients() {
                   <div className="mt-2 text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
                     🆕 DNI no encontrado — ingresa los datos manualmente
                   </div>
+                )}
+              </div>
+
+              {/* N° Historial */}
+              <div>
+                <label className={labelClass}>N° Historial</label>
+                {!editingPatient && (
+                  <div className="flex gap-2 mb-2">
+                    <button type="button"
+                      onClick={() => setForm({ ...form, historialAuto: true, historialNumber: '' })}
+                      className={`flex-1 text-xs py-2 rounded-lg border transition-colors ${form.historialAuto
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                      Automático
+                    </button>
+                    <button type="button"
+                      onClick={() => setForm({ ...form, historialAuto: false })}
+                      className={`flex-1 text-xs py-2 rounded-lg border transition-colors ${!form.historialAuto
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                      Manual
+                    </button>
+                  </div>
+                )}
+                {(!form.historialAuto || editingPatient) && (
+                  <input type="text" placeholder="Ej: HC-0001"
+                    value={form.historialNumber || ''}
+                    onChange={(e) => setForm({ ...form, historialNumber: e.target.value })}
+                    className={inputClass} />
+                )}
+                {form.historialAuto && !editingPatient && (
+                  <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                    El sistema generará el número automáticamente
+                  </p>
                 )}
               </div>
 
@@ -391,7 +434,8 @@ export default function Patients() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={handleCloseForm}
-                  className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}>
                   Cancelar
                 </button>
                 <button type="submit"
@@ -403,6 +447,8 @@ export default function Patients() {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   )
 }

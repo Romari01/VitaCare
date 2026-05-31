@@ -19,6 +19,7 @@ import Consultorios from './pages/admin/Consultorios'
 import Horarios from './pages/admin/Horarios'
 import Pagos from './pages/admin/Pagos'
 import Configuraciones from './pages/admin/Configuraciones'
+import Especialidades from './pages/admin/Especialidades'
 
 function App() {
   return (
@@ -69,7 +70,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/reports" element={
-          <ProtectedRoute roles={['admin', 'admision']}>
+          <ProtectedRoute roles={['admin', 'admision', 'doctor']}>
             <MainLayout><Reports /></MainLayout>
           </ProtectedRoute>
         } />
@@ -110,6 +111,11 @@ function App() {
         <Route path="/pagos" element={
           <ProtectedRoute roles={['admin', 'admision']}>
             <MainLayout><Pagos /></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/especialidades" element={
+          <ProtectedRoute roles={['admin', 'admision']}>
+            <MainLayout><Especialidades /></MainLayout>
           </ProtectedRoute>
         } />
 

@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import api from '../../services/api'
-
-const specialties = [
-  'Medicina General', 'Pediatría', 'Ginecología', 'Cardiología',
-  'Traumatología', 'Neurología', 'Oftalmología', 'Dermatología'
-]
+import Toast from '../../components/Toast'
+import useToast from '../../hooks/useToast'
 
 export default function Doctors() {
   const { darkMode } = useTheme()
+  const { toast, showToast, hideToast } = useToast()
   const [doctors, setDoctors] = useState([])
+  const [especialidades, setEspecialidades] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -26,20 +25,34 @@ export default function Doctors() {
     }
   }
 
-  useEffect(() => { fetchDoctors() }, [])
+  const fetchEspecialidades = async () => {
+    try {
+      const { data } = await api.get('/especialidades/activas')
+      setEspecialidades(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  useEffect(() => {
+    fetchDoctors()
+    fetchEspecialidades()
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
       if (editingId) {
         await api.put(`/doctors/${editingId}`, form)
+        showToast('Médico actualizado correctamente', 'success')
       } else {
         await api.post('/doctors', form)
+        showToast('Médico registrado correctamente', 'success')
       }
       handleClose()
       fetchDoctors()
     } catch (error) {
-      alert(error.response?.data?.message || 'Error al guardar')
+      showToast(error.response?.data?.message || 'Error al guardar', 'error')
     }
   }
 
@@ -57,8 +70,13 @@ export default function Doctors() {
 
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar médico?')) return
-    await api.delete(`/doctors/${id}`)
-    fetchDoctors()
+    try {
+      await api.delete(`/doctors/${id}`)
+      fetchDoctors()
+      showToast('Médico eliminado correctamente', 'success')
+    } catch (error) {
+      showToast('Error al eliminar', 'error')
+    }
   }
 
   const handleClose = () => {
@@ -67,25 +85,25 @@ export default function Doctors() {
     setForm({ name: '', specialty: '', phone: '', email: '', cmp: '' })
   }
 
-  const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${
-    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
-  }`
+  const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
+    }`
 
   return (
     <div className={`p-6 min-h-full transition-colors ${darkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Médicos</h1>
           <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Gestión del personal médico</p>
         </div>
-        <button onClick={() => setShowForm(true)}
+        <button onClick={() => { setShowForm(true); fetchEspecialidades() }}
           className="bg-teal-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors shadow-md shadow-teal-500/20">
           + Nuevo Médico
         </button>
       </div>
 
-      {/* Grid de cards */}
+      {/* Grid */}
       {loading ? (
         <div className="flex flex-col items-center justify-center h-64 gap-2">
           <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
@@ -99,10 +117,11 @@ export default function Doctors() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {doctors.map((d) => (
-            <div key={d._id} className={`rounded-2xl border p-5 transition-all hover:shadow-md ${darkMode ? 'bg-gray-800 border-gray-700 hover:border-teal-500/30' : 'bg-white border-slate-100 hover:border-teal-200'}`}>
+            <div key={d._id} className={`rounded-2xl border p-5 transition-all hover:shadow-md ${darkMode ? 'bg-gray-800 border-gray-700 hover:border-teal-500/30' : 'bg-white border-slate-100 hover:border-teal-200'
+              }`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold">
+                  <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
                     {d.name.charAt(0)}
                   </div>
                   <div>
@@ -120,13 +139,11 @@ export default function Doctors() {
               </div>
               <div className={`flex gap-2 pt-3 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
                 <button onClick={() => handleEdit(d)}
-                  className={`flex-1 text-xs py-1.5 rounded-lg border transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                  Editar
-                </button>
+                  className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 flex items-center justify-center transition-colors"
+                  title="Editar">✏️</button>
                 <button onClick={() => handleDelete(d._id)}
-                  className="flex-1 text-xs py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
-                  Eliminar
-                </button>
+                  className="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors"
+                  title="Eliminar">🗑️</button>
               </div>
             </div>
           ))}
@@ -147,36 +164,54 @@ export default function Doctors() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Nombre completo</label>
-                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                <input required value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Ej: Dr. Juan Pérez" className={inputClass} />
               </div>
               <div>
                 <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Especialidad</label>
-                <select required value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} className={inputClass}>
+                <select required value={form.specialty}
+                  onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+                  className={inputClass}>
                   <option value="">Seleccionar...</option>
-                  {specialties.map(s => <option key={s} value={s}>{s}</option>)}
+                  {especialidades.length > 0 ? (
+                    especialidades.map(e => (
+                      <option key={e._id} value={e.nombre}>{e.icon} {e.nombre}</option>
+                    ))
+                  ) : (
+                    <option disabled>No hay especialidades registradas</option>
+                  )}
                 </select>
+                {especialidades.length === 0 && (
+                  <p className="text-xs text-orange-500 mt-1">
+                    ⚠️ Primero registra especialidades en el módulo de Especialidades
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Teléfono</label>
-                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  <input value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="987654321" className={inputClass} />
                 </div>
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>CMP</label>
-                  <input value={form.cmp} onChange={(e) => setForm({ ...form, cmp: e.target.value })}
+                  <input value={form.cmp}
+                    onChange={(e) => setForm({ ...form, cmp: e.target.value })}
                     placeholder="12345" className={inputClass} />
                 </div>
               </div>
               <div>
                 <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Email</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                <input type="email" value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="doctor@vitacare.com" className={inputClass} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={handleClose}
-                  className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  className={`flex-1 border py-2.5 rounded-xl text-sm transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}>
                   Cancelar
                 </button>
                 <button type="submit"
@@ -188,6 +223,8 @@ export default function Doctors() {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
     </div>
   )
 }
