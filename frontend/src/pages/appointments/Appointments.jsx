@@ -35,6 +35,10 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [filterDate, setFilterDate] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const perPage = 10
   const [form, setForm] = useState({
     patient: '', doctor: '', date: '', time: '', reason: ''
   })
@@ -104,8 +108,18 @@ export default function Appointments() {
     }
   }
 
+  const filtered = appointments.filter(a =>
+    (a.patient?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.doctor?.name?.toLowerCase().includes(search.toLowerCase())) &&
+    (filterStatus === '' || a.status === filterStatus)
+  )
+
+  const totalPages = Math.ceil(filtered.length / perPage)
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage)
+
   const inputClass = `w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-slate-200 text-slate-800'
     }`
+  const labelClass = `block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`
 
   return (
     <div className={`p-6 min-h-full transition-colors ${darkMode ? 'bg-gray-900' : 'bg-slate-50'}`}>
@@ -124,17 +138,47 @@ export default function Appointments() {
         )}
       </div>
 
-      {/* Filtro */}
-      <div className="mb-4 flex items-center gap-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total Citas', value: appointments.length, color: 'text-slate-600', bg: darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100' },
+          { label: 'Pendientes', value: appointments.filter(a => a.status === 'pendiente').length, color: 'text-yellow-600', bg: darkMode ? 'bg-yellow-900/20 border-yellow-700' : 'bg-yellow-50 border-yellow-100' },
+          { label: 'Confirmadas', value: appointments.filter(a => a.status === 'confirmada').length, color: 'text-green-600', bg: darkMode ? 'bg-green-900/20 border-green-700' : 'bg-green-50 border-green-100' },
+          { label: 'Atendidas', value: appointments.filter(a => a.status === 'atendida').length, color: 'text-blue-600', bg: darkMode ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-100' },
+        ].map(s => (
+          <div key={s.label} className={`rounded-2xl border p-4 ${s.bg}`}>
+            <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>{s.label}</p>
+            <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <input type="text" placeholder="Buscar paciente o médico..."
+          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          className={`flex-1 min-w-48 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'border-slate-200'
+            }`} />
         <input type="date" value={filterDate}
-          onChange={(e) => setFilterDate(e.target.value)}
-          className={`border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'border-slate-200'
-            }`}
-        />
+          onChange={(e) => { setFilterDate(e.target.value); setPage(1) }}
+          className={`border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'border-slate-200'
+            }`} />
+        <div className="flex gap-2 flex-wrap">
+          {['', 'pendiente', 'confirmada', 'atendida', 'cancelada'].map(s => (
+            <button key={s} onClick={() => { setFilterStatus(s); setPage(1) }}
+              className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors capitalize ${filterStatus === s
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : darkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>
+              {s === '' ? 'Todos' : s}
+            </button>
+          ))}
+        </div>
         {filterDate && (
           <button onClick={() => setFilterDate('')}
-            className={`text-sm ${darkMode ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-            Limpiar filtro
+            className={`text-xs px-3 py-2 rounded-xl border transition-colors ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+              }`}>
+            ✕ Limpiar fecha
           </button>
         )}
       </div>
@@ -143,7 +187,7 @@ export default function Appointments() {
       <div className={`rounded-2xl border overflow-hidden shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100'}`}>
         <div className={`px-6 py-4 border-b flex items-center justify-between ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
           <h2 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Lista de citas</h2>
-          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{appointments.length} cita(s)</span>
+          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{filtered.length} cita(s)</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -163,27 +207,34 @@ export default function Appointments() {
                     <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Cargando...</span>
                   </div>
                 </td></tr>
-              ) : appointments.length === 0 ? (
+              ) : paginated.length === 0 ? (
                 <tr><td colSpan="6" className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-4xl">📅</span>
                     <p className={`font-medium ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>No hay citas registradas</p>
                   </div>
                 </td></tr>
-              ) : appointments.map((a) => (
+              ) : paginated.map((a) => (
                 <tr key={a._id} className={`transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-slate-50'}`}>
                   <td className="px-6 py-4">
-                    <p className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>{a.patient?.name}</p>
-                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{a.patient?.dni}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                        {a.patient?.name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>{a.patient?.name}</p>
+                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{a.patient?.dni}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className={`text-sm ${darkMode ? 'text-gray-200' : 'text-slate-700'}`}>{a.doctor?.name}</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-slate-700'}`}>{a.doctor?.name}</p>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>{a.doctor?.specialty}</p>
                   </td>
                   <td className={`px-6 py-4 text-sm whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
-                    {new Date(a.date).toLocaleDateString('es-PE')}
+                    {new Date(a.date).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className={`px-6 py-4 text-sm whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
+                  <td className={`px-6 py-4 text-sm whitespace-nowrap font-mono ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
                     {a.time}
                   </td>
                   <td className="px-6 py-4">
@@ -193,7 +244,7 @@ export default function Appointments() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {a.status === 'pendiente' && ['admin', 'admision', 'doctor'].includes(user?.role) && (
                         <button onClick={() => handleStatus(a._id, 'confirmada')}
                           className="text-xs px-2 py-1 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 transition-colors whitespace-nowrap">
@@ -224,6 +275,26 @@ export default function Appointments() {
             </tbody>
           </table>
         </div>
+
+        {/* Paginación */}
+        <div className={`px-6 py-4 border-t flex items-center justify-between flex-wrap gap-3 ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
+          <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+            Mostrando {filtered.length === 0 ? 0 : (page - 1) * perPage + 1} a {Math.min(page * perPage, filtered.length)} de {filtered.length} citas
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors disabled:opacity-40 ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>Anterior</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <button key={p} onClick={() => setPage(p)}
+                className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${page === p ? 'bg-teal-600 text-white' : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-slate-600 hover:bg-slate-50'
+                  }`}>{p}</button>
+            ))}
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || totalPages === 0}
+              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors disabled:opacity-40 ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>Siguiente</button>
+          </div>
+        </div>
       </div>
 
       {/* Modal */}
@@ -231,13 +302,17 @@ export default function Appointments() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className={`rounded-2xl p-6 w-full max-w-md shadow-xl ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Nueva Cita</h2>
+              <div>
+                <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Nueva Cita</h2>
+                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Completa los datos para registrar</p>
+              </div>
               <button onClick={() => setShowForm(false)}
-                className={`text-xl ${darkMode ? 'text-gray-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>✕</button>
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-slate-400 hover:bg-slate-100'
+                  }`}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Paciente</label>
+                <label className={labelClass}>Paciente</label>
                 <select required value={form.patient}
                   onChange={(e) => setForm({ ...form, patient: e.target.value })}
                   className={inputClass}>
@@ -246,7 +321,7 @@ export default function Appointments() {
                 </select>
               </div>
               <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Médico</label>
+                <label className={labelClass}>Médico</label>
                 <select required value={form.doctor}
                   onChange={(e) => setForm({ ...form, doctor: e.target.value })}
                   className={inputClass}>
@@ -256,13 +331,13 @@ export default function Appointments() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Fecha</label>
+                  <label className={labelClass}>Fecha</label>
                   <input type="date" required value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     className={inputClass} />
                 </div>
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Hora</label>
+                  <label className={labelClass}>Hora</label>
                   <select required value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
                     className={inputClass}>
@@ -272,7 +347,7 @@ export default function Appointments() {
                 </div>
               </div>
               <div>
-                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Motivo de consulta</label>
+                <label className={labelClass}>Motivo de consulta</label>
                 <textarea required value={form.reason}
                   onChange={(e) => setForm({ ...form, reason: e.target.value })}
                   rows={3} placeholder="Describe el motivo..."
