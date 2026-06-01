@@ -109,6 +109,82 @@ const NAV_ICONS = {
   ),
 }
 
+// Categorías del sidebar por rol
+const NAV_CATEGORIES = {
+  admin: [
+    {
+      label: 'GENERAL',
+      items: ['/dashboard']
+    },
+    {
+      label: 'GESTIÓN MÉDICA',
+      items: ['/patients', '/appointments', '/reports']
+    },
+    {
+      label: 'PERSONAL',
+      items: ['/doctors', '/usuarios', '/asistentes']
+    },
+    {
+      label: 'INFRAESTRUCTURA',
+      items: ['/consultorios', '/horarios', '/especialidades']
+    },
+    {
+      label: 'SISTEMA',
+      items: ['/configuraciones', '/profile']
+    },
+  ],
+  admision: [
+    {
+      label: 'GENERAL',
+      items: ['/dashboard']
+    },
+    {
+      label: 'GESTIÓN MÉDICA',
+      items: ['/patients', '/appointments', '/reports']
+    },
+    {
+      label: 'INFRAESTRUCTURA',
+      items: ['/doctors', '/consultorios', '/horarios', '/especialidades']
+    },
+    {
+      label: 'SISTEMA',
+      items: ['/profile']
+    },
+  ],
+  doctor: [
+    {
+      label: 'GENERAL',
+      items: ['/dashboard']
+    },
+    {
+      label: 'GESTIÓN MÉDICA',
+      items: ['/patients', '/appointments', '/reports']
+    },
+    {
+      label: 'SISTEMA',
+      items: ['/profile']
+    },
+  ],
+  paciente: [
+    {
+      label: 'GENERAL',
+      items: ['/dashboard']
+    },
+    {
+      label: 'MIS CITAS',
+      items: ['/my-appointments']
+    },
+    {
+      label: 'SOPORTE',
+      items: ['/asistente']
+    },
+    {
+      label: 'SISTEMA',
+      items: ['/profile']
+    },
+  ],
+}
+
 export default function MainLayout({ children }) {
   const { user, logout } = useAuth()
   const { darkMode, toggle } = useTheme()
@@ -125,6 +201,12 @@ export default function MainLayout({ children }) {
   const [weekOffset, setWeekOffset] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [appointments, setAppointments] = useState([])
+
+  // Chatbot
+  const [showChat, setShowChat] = useState(false)
+  const [messages, setMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
 
   const weekDays = getWeekDays(weekOffset)
   const today = new Date()
@@ -201,6 +283,51 @@ export default function MainLayout({ children }) {
     }
   }
 
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || chatLoading) return
+    const userMsg = { role: 'user', content: chatInput }
+    const newMessages = [...messages, userMsg]
+    setMessages(newMessages)
+    setChatInput('')
+    setChatLoading(true)
+
+    const systemPrompts = {
+      admin: `Eres un asistente de IA para el administrador del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca. 
+Ayudas con: gestión de usuarios y roles, estadísticas del sistema, reportes de atención, configuración del sistema, gestión de médicos, consultorios, horarios y especialidades.
+Responde siempre en español, de forma clara, concisa y profesional.`,
+      admision: `Eres un asistente de IA para el personal de admisión del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca.
+Ayudas con: registro de pacientes, programación de citas médicas, búsqueda de historial clínico, disponibilidad de doctores, procesos administrativos de admisión.
+Responde siempre en español, de forma clara y amigable.`,
+      doctor: `Eres un asistente de IA para médicos del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca.
+Ayudas con: agenda del día, consulta de historial de pacientes, información médica de referencia, registro de observaciones clínicas, orientación sobre diagnósticos según síntomas.
+Responde siempre en español, de forma profesional y precisa.`,
+      paciente: `Eres un asistente de salud virtual del Centro de Salud Jorge Chávez de Juliaca, Perú.
+Ayudas a pacientes con: orientación sobre síntomas y especialidad adecuada, información sobre sus citas médicas, consejos de salud preventiva, preparación para consultas médicas.
+Las especialidades disponibles son: Medicina General, Nutrición, Psicología, Odontología, Enfermería y Obstetricia.
+Responde siempre en español, de forma amigable, clara y empática. No reemplazas a un médico real.`,
+    }
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompts[user?.role] || systemPrompts.paciente,
+          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+        })
+      })
+      const data = await response.json()
+      const reply = data.content?.[0]?.text || 'Lo siento, no pude procesar tu mensaje.'
+      setMessages([...newMessages, { role: 'assistant', content: reply }])
+    } catch (error) {
+      setMessages([...newMessages, { role: 'assistant', content: 'Error al conectar con el asistente. Intenta de nuevo.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   const allNavItems = [
     { path: '/dashboard', label: 'Inicio', roles: ['admin', 'doctor', 'admision', 'paciente'] },
     { path: '/configuraciones', label: 'Configuraciones', roles: ['admin'] },
@@ -218,13 +345,21 @@ export default function MainLayout({ children }) {
     { path: '/profile', label: 'Mi Perfil', roles: ['admin', 'doctor', 'admision', 'paciente'] },
   ]
 
-  const navItems = allNavItems.filter(item => item.roles.includes(user?.role))
+  const navItemsMap = Object.fromEntries(allNavItems.map(i => [i.path, i]))
+  const categories = NAV_CATEGORIES[user?.role] || []
 
   const roleInfo = {
     admin: { label: 'Administrador', color: darkMode ? 'bg-purple-900/40 text-purple-300 border border-purple-700' : 'bg-purple-50 text-purple-700 border border-purple-200' },
     doctor: { label: 'Doctor', color: darkMode ? 'bg-blue-900/40 text-blue-300 border border-blue-700' : 'bg-blue-50 text-blue-700 border border-blue-200' },
     admision: { label: 'Admisión', color: darkMode ? 'bg-teal-900/40 text-teal-300 border border-teal-700' : 'bg-teal-50 text-teal-700 border border-teal-200' },
     paciente: { label: 'Paciente', color: darkMode ? 'bg-green-900/40 text-green-300 border border-green-700' : 'bg-green-50 text-green-700 border border-green-200' },
+  }
+
+  const chatTitles = {
+    admin: '🔑 Asistente Admin',
+    admision: '🖥️ Asistente Admisión',
+    doctor: '👨‍⚕️ Asistente Médico',
+    paciente: '💬 Asistente de Salud',
   }
 
   return (
@@ -251,62 +386,58 @@ export default function MainLayout({ children }) {
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        {/* Nav con categorías */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto">
+          {categories.map((cat) => (
+            <div key={cat.label} className="mb-3">
+              <p className={`text-xs font-semibold uppercase tracking-wider px-3 py-1.5 ${darkMode ? 'text-gray-600' : 'text-slate-400'}`}>
+                {cat.label}
+              </p>
+              <div className="space-y-0.5">
+                {cat.items.map((path) => {
+                  const item = navItemsMap[path]
+                  if (!item) return null
+                  const isActive = location.pathname === item.path
+                  return (
+                    <div key={path}>
+                      <Link to={item.path}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${isActive
+                            ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
+                            : darkMode
+                              ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                          }`}>
+                        <span className={`flex-shrink-0 ${isActive ? 'text-white' : darkMode ? 'text-gray-500 group-hover:text-gray-300' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                          {NAV_ICONS[item.path]}
+                        </span>
+                        <span>{item.label}</span>
+                        {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-70" />}
+                      </Link>
 
-          {/* Separador de sección */}
-          {user?.role === 'admin' && (
-            <p className={`text-xs font-semibold uppercase tracking-wider px-3 py-2 ${darkMode ? 'text-gray-600' : 'text-slate-400'}`}>
-              General
-            </p>
-          )}
-
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path
-            return (
-              <div key={item.path}>
-                <Link to={item.path}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${isActive
-                    ? darkMode
-                      ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
-                      : 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
-                    : darkMode
-                      ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                    }`}>
-                  <span className={`flex-shrink-0 ${isActive ? 'text-white' : darkMode ? 'text-gray-500 group-hover:text-gray-300' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                    {NAV_ICONS[item.path]}
-                  </span>
-                  <span>{item.label}</span>
-                  {isActive && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-70" />
-                  )}
-                </Link>
-
-                {item.path === '/dashboard' && user?.role === 'paciente' && (
-                  <button
-                    onClick={handleOpenForm}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-0.5 group ${showForm
-                      ? darkMode ? 'bg-teal-600 text-white' : 'bg-teal-600 text-white'
-                      : darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                      }`}>
-                    <span className={`flex-shrink-0 ${showForm ? 'text-white' : darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </span>
-                    Reservar Cita
-                  </button>
-                )}
+                      {item.path === '/dashboard' && user?.role === 'paciente' && (
+                        <button onClick={handleOpenForm}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-0.5 group ${showForm
+                              ? 'bg-teal-600 text-white'
+                              : darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                            }`}>
+                          <span className={`flex-shrink-0 ${showForm ? 'text-white' : darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </span>
+                          Reservar Cita
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </nav>
 
         {/* Bottom */}
         <div className={`px-3 py-3 border-t space-y-1 ${darkMode ? 'border-gray-800' : 'border-slate-100'}`}>
-
-          {/* Toggle dark mode */}
           <button onClick={toggle}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
               }`}>
@@ -318,7 +449,6 @@ export default function MainLayout({ children }) {
             <span>{darkMode ? 'Modo oscuro' : 'Modo claro'}</span>
           </button>
 
-          {/* Usuario */}
           <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl ${darkMode ? 'bg-gray-800/60' : 'bg-slate-50'}`}>
             <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
               <span className="text-white text-sm font-bold">{user?.name?.charAt(0)}</span>
@@ -329,7 +459,6 @@ export default function MainLayout({ children }) {
             </div>
           </div>
 
-          {/* Logout */}
           <button onClick={handleLogout}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${darkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-500 hover:bg-red-50'
               }`}>
@@ -346,21 +475,113 @@ export default function MainLayout({ children }) {
         {children}
       </main>
 
+      {/* CHATBOT FLOTANTE */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+
+        {/* Ventana del chat */}
+        {showChat && (
+          <div className={`w-80 rounded-2xl shadow-2xl border overflow-hidden flex flex-col ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-slate-200'
+            }`} style={{ height: '460px' }}>
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white text-sm font-bold">{chatTitles[user?.role]}</p>
+                  <p className="text-teal-100 text-xs">VitaCare IA</p>
+                </div>
+              </div>
+              <button onClick={() => setShowChat(false)}
+                className="text-white/70 hover:text-white transition-colors">✕</button>
+            </div>
+
+            {/* Mensajes */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.length === 0 && (
+                <div className={`text-center py-6 ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
+                  <div className="text-3xl mb-2">👋</div>
+                  <p className="text-sm font-medium">¡Hola, {user?.name?.split(' ')[0]}!</p>
+                  <p className="text-xs mt-1">¿En qué puedo ayudarte hoy?</p>
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm ${msg.role === 'user'
+                      ? 'bg-teal-600 text-white rounded-br-sm'
+                      : darkMode ? 'bg-gray-800 text-gray-200 rounded-bl-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'
+                    }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className={`px-3 py-2 rounded-2xl rounded-bl-sm ${darkMode ? 'bg-gray-800' : 'bg-slate-100'}`}>
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className={`px-3 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                  placeholder="Escribe tu mensaje..."
+                  className={`flex-1 text-sm px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                />
+                <button onClick={handleSendChat} disabled={chatLoading || !chatInput.trim()}
+                  className="w-9 h-9 bg-teal-600 text-white rounded-xl flex items-center justify-center hover:bg-teal-700 transition-colors disabled:opacity-40">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botón flotante */}
+        <button onClick={() => setShowChat(!showChat)}
+          className="w-14 h-14 bg-teal-600 text-white rounded-full shadow-lg shadow-teal-500/40 hover:bg-teal-700 transition-all hover:scale-110 flex items-center justify-center">
+          {showChat ? (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          )}
+        </button>
+      </div>
+
       {/* MODAL RESERVAR CITA */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto">
           <div className="w-full max-w-6xl flex gap-6 pb-8">
             <div className="flex-1 flex flex-col gap-4">
-
               <div className="bg-gradient-to-r from-teal-700 to-teal-600 rounded-2xl px-6 py-5 flex items-center justify-between shadow-lg">
                 <div>
                   <h2 className="text-white text-xl font-bold">Reservar Cita Médica</h2>
                   <p className="text-teal-200 text-sm mt-0.5">Selecciona especialidad, doctor y horario disponible</p>
                 </div>
                 <button onClick={() => setShowForm(false)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
-                  ✕
-                </button>
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">✕</button>
               </div>
 
               {/* PASO 1 */}
@@ -374,12 +595,11 @@ export default function MainLayout({ children }) {
                     {specialties.map((s) => (
                       <button key={s.name} type="button" onClick={() => handleSpecialty(s.name)}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all hover:-translate-y-0.5 hover:shadow-md ${selectedSpecialty === s.name
-                          ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
-                          : 'border-slate-200 hover:border-teal-300 bg-white'
+                            ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
+                            : 'border-slate-200 hover:border-teal-300 bg-white'
                           }`}>
                         <span className="text-2xl">{s.icon}</span>
-                        <span className={`text-xs font-medium text-center leading-tight ${selectedSpecialty === s.name ? 'text-teal-700' : 'text-slate-600'
-                          }`}>{s.name}</span>
+                        <span className={`text-xs font-medium text-center leading-tight ${selectedSpecialty === s.name ? 'text-teal-700' : 'text-slate-600'}`}>{s.name}</span>
                       </button>
                     ))}
                   </div>
@@ -407,8 +627,8 @@ export default function MainLayout({ children }) {
                       {doctors.map((d) => (
                         <button key={d._id} type="button" onClick={() => setSelectedDoctor(d)}
                           className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left hover:shadow-md ${selectedDoctor?._id === d._id
-                            ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
-                            : 'border-slate-200 hover:border-teal-300'
+                              ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
+                              : 'border-slate-200 hover:border-teal-300'
                             }`}>
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                             {d.name?.charAt(0)}
@@ -439,8 +659,7 @@ export default function MainLayout({ children }) {
                 </div>
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
-                      disabled={weekOffset === 0}
+                    <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0}
                       className="flex items-center gap-1 text-sm px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                       ‹ Anterior
                     </button>
@@ -460,8 +679,7 @@ export default function MainLayout({ children }) {
                             return (
                               <th key={i} className="text-center py-2 px-1">
                                 <div className={`text-xs font-medium ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>{DAY_NAMES[i]}</div>
-                                <div className={`w-7 h-7 mx-auto mt-1 rounded-full flex items-center justify-center font-bold text-sm ${isToday ? 'bg-teal-600 text-white shadow-md shadow-teal-500/30' : 'text-slate-700'
-                                  }`}>{d.getDate()}</div>
+                                <div className={`w-7 h-7 mx-auto mt-1 rounded-full flex items-center justify-center font-bold text-sm ${isToday ? 'bg-teal-600 text-white shadow-md shadow-teal-500/30' : 'text-slate-700'}`}>{d.getDate()}</div>
                               </th>
                             )
                           })}
@@ -482,14 +700,13 @@ export default function MainLayout({ children }) {
                                   {isPast ? (
                                     <span className="block w-full py-1 text-slate-200 text-xs">—</span>
                                   ) : (
-                                    <button type="button"
-                                      disabled={!available}
+                                    <button type="button" disabled={!available}
                                       onClick={() => { setSelectedDate(day); setSelectedTime(time) }}
                                       className={`w-full py-1 rounded-lg text-xs font-medium transition-all ${isSelected
-                                        ? 'bg-teal-600 text-white shadow-sm'
-                                        : available
-                                          ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200'
-                                          : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                                          ? 'bg-teal-600 text-white shadow-sm'
+                                          : available
+                                            ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200'
+                                            : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                                         }`}>
                                       {time}
                                     </button>
@@ -538,7 +755,6 @@ export default function MainLayout({ children }) {
                   </div>
                   <h3 className="font-bold text-slate-800">Resumen de cita</h3>
                 </div>
-
                 <div className="space-y-3 text-sm mb-5">
                   {[
                     { label: 'Especialidad', val: selectedSpecialty || 'Sin seleccionar' },
@@ -548,43 +764,29 @@ export default function MainLayout({ children }) {
                   ].map((r) => (
                     <div key={r.label} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
                       <span className="text-slate-400 text-xs">{r.label}</span>
-                      <span className={`font-semibold text-xs text-right ml-2 ${r.val === 'Sin seleccionar' ? 'text-slate-300' : 'text-slate-800'}`}>
-                        {r.val}
-                      </span>
+                      <span className={`font-semibold text-xs text-right ml-2 ${r.val === 'Sin seleccionar' ? 'text-slate-300' : 'text-slate-800'}`}>{r.val}</span>
                     </div>
                   ))}
                 </div>
-
-                <div className={`rounded-xl p-4 text-center mb-4 ${selectedSpecialty && selectedDoctor && selectedDate && selectedTime
-                  ? 'bg-teal-50 border border-teal-200'
-                  : 'bg-slate-50 border border-slate-200'
-                  }`}>
+                <div className={`rounded-xl p-4 text-center mb-4 ${selectedSpecialty && selectedDoctor && selectedDate && selectedTime ? 'bg-teal-50 border border-teal-200' : 'bg-slate-50 border border-slate-200'}`}>
                   <p className={`text-xs mb-1 ${selectedSpecialty && selectedDoctor ? 'text-teal-600' : 'text-slate-400'}`}>Modalidad</p>
                   <p className={`text-base font-bold ${selectedSpecialty && selectedDoctor ? 'text-teal-700' : 'text-slate-300'}`}>Presencial</p>
                 </div>
-
                 <button onClick={handleSubmit}
                   disabled={submitting || !selectedSpecialty || !selectedDoctor || !selectedDate || !selectedTime || !reason}
                   className="w-full bg-teal-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   {submitting ? (
                     <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Agendando...</>
                   ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Confirmar Cita
-                    </>
+                    <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Confirmar Cita</>
                   )}
                 </button>
-
                 <p className="text-xs text-slate-400 text-center mt-3 flex items-center justify-center gap-1">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   Cancelación gratuita 24h antes
                 </p>
-
                 <button onClick={() => setShowForm(false)}
                   className="w-full mt-3 text-sm text-slate-400 hover:text-slate-600 transition-colors py-2 rounded-xl hover:bg-slate-50">
                   Cancelar
