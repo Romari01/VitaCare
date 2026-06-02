@@ -1,13 +1,8 @@
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
-const { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/emailService')
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' })
-}
-
-const generateCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
 const register = async (req, res) => {
@@ -16,30 +11,20 @@ const register = async (req, res) => {
     const userExists = await User.findOne({ email })
     if (userExists) return res.status(400).json({ message: 'El usuario ya existe' })
 
-    const isStaff = role !== 'paciente'
-    const code = generateCode()
-    const expires = new Date(Date.now() + 10 * 60 * 1000)
-
     const user = await User.create({
       name, email, password, role,
       phone: phone || '',
       dni: dni || '',
-      verificationCode: isStaff ? undefined : code,
-      verificationExpires: isStaff ? undefined : expires,
-      isVerified: isStaff
+      isVerified: true
     })
-
-    if (!isStaff) {
-      await sendVerificationEmail(email, name, code)
-    }
 
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      isVerified: isStaff,
-      message: isStaff ? 'Usuario creado correctamente.' : 'Cuenta creada. Revisa tu correo para verificar tu cuenta.'
+      isVerified: true,
+      message: 'Usuario creado correctamente.'
     })
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -48,19 +33,12 @@ const register = async (req, res) => {
 
 const verifyAccount = async (req, res) => {
   try {
-    const { email, code } = req.body
+    const { email } = req.body
     const user = await User.findOne({ email })
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' })
-    if (user.isVerified) return res.json({ message: 'Cuenta ya verificada' })
-    if (user.verificationCode !== code) return res.status(400).json({ message: 'Código incorrecto' })
-    if (user.verificationExpires < new Date()) return res.status(400).json({ message: 'Código expirado' })
 
     user.isVerified = true
-    user.verificationCode = undefined
-    user.verificationExpires = undefined
     await user.save()
-
-    await sendWelcomeEmail(email, user.name)
 
     res.json({
       _id: user._id,
@@ -96,13 +74,7 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales incorrectas' })
     }
     if (!user.active) return res.status(401).json({ message: 'Usuario inactivo' })
-    if (!user.isVerified) {
-      return res.status(401).json({
-        message: 'Cuenta no verificada',
-        needsVerification: true,
-        email: user.email
-      })
-    }
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -118,11 +90,12 @@ const login = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
+    const { sendPasswordResetEmail } = require('../utils/emailService')
     const { email } = req.body
     const user = await User.findOne({ email })
     if (!user) return res.status(404).json({ message: 'No existe una cuenta con ese correo' })
 
-    const code = generateCode()
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
     const expires = new Date(Date.now() + 10 * 60 * 1000)
 
     user.resetCode = code
@@ -160,16 +133,6 @@ const resendCode = async (req, res) => {
     const { email } = req.body
     const user = await User.findOne({ email })
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' })
-    if (user.isVerified) return res.status(400).json({ message: 'Cuenta ya verificada' })
-
-    const code = generateCode()
-    const expires = new Date(Date.now() + 10 * 60 * 1000)
-
-    user.verificationCode = code
-    user.verificationExpires = expires
-    await user.save()
-
-    await sendVerificationEmail(email, user.name, code)
     res.json({ message: 'Código reenviado' })
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -233,26 +196,21 @@ const registerPatient = async (req, res) => {
     const userExists = await User.findOne({ email })
     if (userExists) return res.status(400).json({ message: 'Este email ya está registrado' })
 
-    const code = generateCode()
-    const expires = new Date(Date.now() + 10 * 60 * 1000)
-
     const user = await User.create({
       name: patient.name, email, password,
-      role: 'paciente', dni, phone: phone || '',
-      verificationCode: code,
-      verificationExpires: expires,
-      isVerified: false
+      role: 'paciente', dni,
+      phone: phone || '',
+      isVerified: true
     })
-
-    await sendVerificationEmail(email, patient.name, code)
 
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      isVerified: false,
-      message: 'Cuenta creada. Revisa tu correo para verificar tu cuenta.'
+      isVerified: true,
+      token: generateToken(user._id, user.role),
+      message: 'Cuenta creada correctamente.'
     })
   } catch (error) {
     res.status(500).json({ message: error.message })

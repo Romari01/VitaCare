@@ -6,6 +6,10 @@ const doctorSchema = new mongoose.Schema({
     required: [true, 'El nombre es obligatorio'],
     trim: true
   },
+  dni: {
+    type: String,
+    trim: true
+  },
   specialty: {
     type: String,
     required: [true, 'La especialidad es obligatoria'],
@@ -23,6 +27,7 @@ const doctorSchema = new mongoose.Schema({
   cmp: {
     type: String,
     unique: true,
+    sparse: true,
     trim: true
   },
   schedule: [{
