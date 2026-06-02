@@ -11,6 +11,13 @@ const SPECIALTY_COLORS = {
   'Odontologia': 'from-cyan-400 to-cyan-600',
   'Enfermeria': 'from-pink-400 to-pink-600',
   'Obstetricia': 'from-rose-400 to-rose-600',
+  'Cardiología': 'from-red-400 to-red-600',
+  'Pediatría': 'from-orange-400 to-orange-600',
+  'Ginecología': 'from-fuchsia-400 to-fuchsia-600',
+  'Traumatología': 'from-amber-400 to-amber-600',
+  'Neurología': 'from-indigo-400 to-indigo-600',
+  'Oftalmología': 'from-sky-400 to-sky-600',
+  'Dermatología': 'from-lime-400 to-lime-600',
 }
 
 const SPECIALTY_BADGE = {
@@ -20,6 +27,13 @@ const SPECIALTY_BADGE = {
   'Odontologia': 'bg-cyan-50 text-cyan-600 border border-cyan-200',
   'Enfermeria': 'bg-pink-50 text-pink-600 border border-pink-200',
   'Obstetricia': 'bg-rose-50 text-rose-600 border border-rose-200',
+  'Cardiología': 'bg-red-50 text-red-600 border border-red-200',
+  'Pediatría': 'bg-orange-50 text-orange-600 border border-orange-200',
+  'Ginecología': 'bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-200',
+  'Traumatología': 'bg-amber-50 text-amber-600 border border-amber-200',
+  'Neurología': 'bg-indigo-50 text-indigo-600 border border-indigo-200',
+  'Oftalmología': 'bg-sky-50 text-sky-600 border border-sky-200',
+  'Dermatología': 'bg-lime-50 text-lime-600 border border-lime-200',
 }
 
 export default function Doctors() {
@@ -192,22 +206,17 @@ export default function Doctors() {
           {filtered.map((d) => (
             <div key={d._id} className={`rounded-2xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100'
               }`}>
-              {/* Banner */}
-              <div className={`h-16 bg-gradient-to-br ${SPECIALTY_COLORS[d.specialty] || 'from-teal-400 to-teal-600'} relative`}>
-                <div className="absolute inset-0 opacity-20">
-                  <div className="absolute top-1 right-4 w-12 h-12 rounded-full bg-white/30" />
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="px-5 pb-5">
-                <div className="flex items-end gap-3 -mt-6 mb-3">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${SPECIALTY_COLORS[d.specialty] || 'from-teal-400 to-teal-600'} flex items-center justify-center text-white font-bold text-lg shadow-md border-2 ${darkMode ? 'border-gray-800' : 'border-white'}`}>
+              {/* Content sin banner */}
+              <div className="p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${SPECIALTY_COLORS[d.specialty] || 'from-teal-400 to-teal-600'
+                    } flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0`}>
                     {d.name?.charAt(0)}
                   </div>
-                  <div className="pb-1">
-                    <p className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>{d.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SPECIALTY_BADGE[d.specialty] || 'bg-teal-50 text-teal-600 border border-teal-200'}`}>
+                  <div className="min-w-0">
+                    <p className={`font-bold text-sm truncate ${darkMode ? 'text-white' : 'text-slate-800'}`}>{d.name}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SPECIALTY_BADGE[d.specialty] || 'bg-teal-50 text-teal-600 border border-teal-200'
+                      }`}>
                       {d.specialty}
                     </span>
                   </div>

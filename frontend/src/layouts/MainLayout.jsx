@@ -82,6 +82,11 @@ const NAV_ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   ),
+  '/records': (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+  ),
   '/reports': (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -109,79 +114,30 @@ const NAV_ICONS = {
   ),
 }
 
-// Categorías del sidebar por rol
 const NAV_CATEGORIES = {
   admin: [
-    {
-      label: 'GENERAL',
-      items: ['/dashboard']
-    },
-    {
-      label: 'GESTIÓN MÉDICA',
-      items: ['/patients', '/appointments', '/reports']
-    },
-    {
-      label: 'PERSONAL',
-      items: ['/doctors', '/usuarios', '/asistentes']
-    },
-    {
-      label: 'INFRAESTRUCTURA',
-      items: ['/consultorios', '/horarios', '/especialidades']
-    },
-    {
-      label: 'SISTEMA',
-      items: ['/configuraciones', '/profile']
-    },
+    { label: 'GENERAL', items: ['/dashboard'] },
+    { label: 'GESTIÓN MÉDICA', items: ['/patients', '/appointments', '/records', '/reports'] },
+    { label: 'PERSONAL', items: ['/doctors', '/usuarios', '/asistentes'] },
+    { label: 'INFRAESTRUCTURA', items: ['/consultorios', '/horarios', '/especialidades'] },
+    { label: 'SISTEMA', items: ['/configuraciones', '/profile'] },
   ],
   admision: [
-    {
-      label: 'GENERAL',
-      items: ['/dashboard']
-    },
-    {
-      label: 'GESTIÓN MÉDICA',
-      items: ['/patients', '/appointments', '/reports']
-    },
-    {
-      label: 'INFRAESTRUCTURA',
-      items: ['/doctors', '/consultorios', '/horarios', '/especialidades']
-    },
-    {
-      label: 'SISTEMA',
-      items: ['/profile']
-    },
+    { label: 'GENERAL', items: ['/dashboard'] },
+    { label: 'GESTIÓN MÉDICA', items: ['/patients', '/appointments', '/records', '/reports'] },
+    { label: 'INFRAESTRUCTURA', items: ['/doctors', '/consultorios', '/horarios', '/especialidades'] },
+    { label: 'SISTEMA', items: ['/profile'] },
   ],
   doctor: [
-    {
-      label: 'GENERAL',
-      items: ['/dashboard']
-    },
-    {
-      label: 'GESTIÓN MÉDICA',
-      items: ['/patients', '/appointments', '/reports']
-    },
-    {
-      label: 'SISTEMA',
-      items: ['/profile']
-    },
+    { label: 'GENERAL', items: ['/dashboard'] },
+    { label: 'GESTIÓN MÉDICA', items: ['/patients', '/appointments', '/records', '/reports'] },
+    { label: 'SISTEMA', items: ['/profile'] },
   ],
   paciente: [
-    {
-      label: 'GENERAL',
-      items: ['/dashboard']
-    },
-    {
-      label: 'MIS CITAS',
-      items: ['/my-appointments']
-    },
-    {
-      label: 'SOPORTE',
-      items: ['/asistente']
-    },
-    {
-      label: 'SISTEMA',
-      items: ['/profile']
-    },
+    { label: 'GENERAL', items: ['/dashboard'] },
+    { label: 'MIS CITAS', items: ['/my-appointments'] },
+    { label: 'SOPORTE', items: ['/asistente'] },
+    { label: 'SISTEMA', items: ['/profile'] },
   ],
 }
 
@@ -202,7 +158,6 @@ export default function MainLayout({ children }) {
   const [submitting, setSubmitting] = useState(false)
   const [appointments, setAppointments] = useState([])
 
-  // Chatbot
   const [showChat, setShowChat] = useState(false)
   const [messages, setMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
@@ -292,19 +247,10 @@ export default function MainLayout({ children }) {
     setChatLoading(true)
 
     const systemPrompts = {
-      admin: `Eres un asistente de IA para el administrador del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca. 
-Ayudas con: gestión de usuarios y roles, estadísticas del sistema, reportes de atención, configuración del sistema, gestión de médicos, consultorios, horarios y especialidades.
-Responde siempre en español, de forma clara, concisa y profesional.`,
-      admision: `Eres un asistente de IA para el personal de admisión del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca.
-Ayudas con: registro de pacientes, programación de citas médicas, búsqueda de historial clínico, disponibilidad de doctores, procesos administrativos de admisión.
-Responde siempre en español, de forma clara y amigable.`,
-      doctor: `Eres un asistente de IA para médicos del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca.
-Ayudas con: agenda del día, consulta de historial de pacientes, información médica de referencia, registro de observaciones clínicas, orientación sobre diagnósticos según síntomas.
-Responde siempre en español, de forma profesional y precisa.`,
-      paciente: `Eres un asistente de salud virtual del Centro de Salud Jorge Chávez de Juliaca, Perú.
-Ayudas a pacientes con: orientación sobre síntomas y especialidad adecuada, información sobre sus citas médicas, consejos de salud preventiva, preparación para consultas médicas.
-Las especialidades disponibles son: Medicina General, Nutrición, Psicología, Odontología, Enfermería y Obstetricia.
-Responde siempre en español, de forma amigable, clara y empática. No reemplazas a un médico real.`,
+      admin: `Eres un asistente de IA para el administrador del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca. Ayudas con: gestión de usuarios y roles, estadísticas del sistema, reportes de atención, configuración del sistema, gestión de médicos, consultorios, horarios y especialidades. Responde siempre en español, de forma clara, concisa y profesional.`,
+      admision: `Eres un asistente de IA para el personal de admisión del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca. Ayudas con: registro de pacientes, programación de citas médicas, búsqueda de historial clínico, disponibilidad de doctores, procesos administrativos de admisión. Responde siempre en español, de forma clara y amigable.`,
+      doctor: `Eres un asistente de IA para médicos del sistema VitaCare del Centro de Salud Jorge Chávez de Juliaca. Ayudas con: agenda del día, consulta de historial de pacientes, información médica de referencia, registro de observaciones clínicas, orientación sobre diagnósticos según síntomas. Responde siempre en español, de forma profesional y precisa.`,
+      paciente: `Eres un asistente de salud virtual del Centro de Salud Jorge Chávez de Juliaca, Perú. Ayudas a pacientes con: orientación sobre síntomas y especialidad adecuada, información sobre sus citas médicas, consejos de salud preventiva, preparación para consultas médicas. Las especialidades disponibles son: Medicina General, Nutrición, Psicología, Odontología, Enfermería y Obstetricia. Responde siempre en español, de forma amigable, clara y empática. No reemplazas a un médico real.`,
     }
 
     try {
@@ -322,7 +268,7 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
       const reply = data.content?.[0]?.text || 'Lo siento, no pude procesar tu mensaje.'
       setMessages([...newMessages, { role: 'assistant', content: reply }])
     } catch (error) {
-      setMessages([...newMessages, { role: 'assistant', content: 'Error al conectar con el asistente. Intenta de nuevo.' }])
+      setMessages([...newMessages, { role: 'assistant', content: 'Error al conectar. Intenta de nuevo.' }])
     } finally {
       setChatLoading(false)
     }
@@ -338,7 +284,8 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
     { path: '/doctors', label: 'Médicos', roles: ['admin', 'admision'] },
     { path: '/horarios', label: 'Horarios', roles: ['admin', 'admision'] },
     { path: '/appointments', label: 'Reservas', roles: ['admin', 'admision', 'doctor'] },
-    { path: '/reports', label: 'Historial Clínico', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/records', label: 'Historial Clínico', roles: ['admin', 'admision', 'doctor'] },
+    { path: '/reports', label: 'Informes', roles: ['admin', 'admision', 'doctor'] },
     { path: '/especialidades', label: 'Especialidades', roles: ['admin', 'admision'] },
     { path: '/my-appointments', label: 'Mis Citas', roles: ['paciente'] },
     { path: '/asistente', label: 'Asistente Virtual', roles: ['paciente'] },
@@ -386,7 +333,7 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
           </div>
         </div>
 
-        {/* Nav con categorías */}
+        {/* Nav */}
         <nav className="flex-1 px-3 py-3 overflow-y-auto">
           {categories.map((cat) => (
             <div key={cat.label} className="mb-3">
@@ -413,7 +360,6 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
                         <span>{item.label}</span>
                         {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-70" />}
                       </Link>
-
                       {item.path === '/dashboard' && user?.role === 'paciente' && (
                         <button onClick={handleOpenForm}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-0.5 group ${showForm
@@ -477,13 +423,9 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
 
       {/* CHATBOT FLOTANTE */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-
-        {/* Ventana del chat */}
         {showChat && (
           <div className={`w-80 rounded-2xl shadow-2xl border overflow-hidden flex flex-col ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-slate-200'
             }`} style={{ height: '460px' }}>
-
-            {/* Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -496,11 +438,9 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
                   <p className="text-teal-100 text-xs">VitaCare IA</p>
                 </div>
               </div>
-              <button onClick={() => setShowChat(false)}
-                className="text-white/70 hover:text-white transition-colors">✕</button>
+              <button onClick={() => setShowChat(false)} className="text-white/70 hover:text-white transition-colors">✕</button>
             </div>
 
-            {/* Mensajes */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.length === 0 && (
                 <div className={`text-center py-6 ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
@@ -532,18 +472,14 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
               )}
             </div>
 
-            {/* Input */}
             <div className={`px-3 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
+                <input type="text" value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
                   placeholder="Escribe tu mensaje..."
                   className={`flex-1 text-sm px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-slate-50 border-slate-200 text-slate-800'
-                    }`}
-                />
+                    }`} />
                 <button onClick={handleSendChat} disabled={chatLoading || !chatInput.trim()}
                   className="w-9 h-9 bg-teal-600 text-white rounded-xl flex items-center justify-center hover:bg-teal-700 transition-colors disabled:opacity-40">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -555,7 +491,6 @@ Responde siempre en español, de forma amigable, clara y empática. No reemplaza
           </div>
         )}
 
-        {/* Botón flotante */}
         <button onClick={() => setShowChat(!showChat)}
           className="w-14 h-14 bg-teal-600 text-white rounded-full shadow-lg shadow-teal-500/40 hover:bg-teal-700 transition-all hover:scale-110 flex items-center justify-center">
           {showChat ? (

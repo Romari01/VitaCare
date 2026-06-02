@@ -8,6 +8,7 @@ import Patients from './pages/patients/Patients'
 import Doctors from './pages/doctors/Doctors'
 import Appointments from './pages/appointments/Appointments'
 import Reports from './pages/reports/Reports'
+import MedicalRecords from './pages/records/MedicalRecords'
 import Chatbot from './pages/chatbot/Chatbot'
 import Profile from './pages/profile/Profile'
 import MainLayout from './layouts/MainLayout'
@@ -74,6 +75,12 @@ function App() {
             <MainLayout><Reports /></MainLayout>
           </ProtectedRoute>
         } />
+        <Route path="/records" element={
+          <ProtectedRoute roles={['admin', 'admision', 'doctor']}>
+            <MainLayout><MedicalRecords /></MainLayout>
+          </ProtectedRoute>
+        } />
+
         <Route path="/chatbot" element={
           <ProtectedRoute roles={['admin', 'admision', 'doctor']}>
             <MainLayout><Chatbot /></MainLayout>

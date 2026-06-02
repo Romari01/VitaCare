@@ -72,20 +72,18 @@ export default function Profile() {
         <div className={`rounded-2xl border overflow-hidden shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100'}`}>
 
           {/* Banner */}
-          <div className={`h-24 bg-gradient-to-br ${role.color} relative`}>
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-2 right-8 w-16 h-16 rounded-full bg-white/30" />
-              <div className="absolute bottom-0 left-16 w-24 h-24 rounded-full bg-white/20" />
-            </div>
+          <div className={`h-20 bg-gradient-to-br ${role.color} relative overflow-hidden`}>
+            <div className="absolute top-2 right-8 w-16 h-16 rounded-full bg-white/10" />
+            <div className="absolute bottom-0 left-16 w-24 h-24 rounded-full bg-white/10" />
           </div>
 
           {/* Info */}
-          <div className="px-6 pb-6">
-            <div className="flex items-end gap-4 -mt-8 mb-4">
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${role.color} flex items-center justify-center shadow-lg border-4 ${darkMode ? 'border-gray-800' : 'border-white'}`}>
+          <div className="px-6 pb-6 pt-4">
+            <div className="flex items-center gap-4 mb-5">
+              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${role.color} flex items-center justify-center shadow-lg flex-shrink-0`}>
                 <span className="text-white text-2xl font-bold">{user?.name?.charAt(0)}</span>
               </div>
-              <div className="pb-1">
+              <div>
                 <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{user?.name}</h2>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${role.bg}`}>{role.label}</span>
               </div>
@@ -129,7 +127,7 @@ export default function Profile() {
             </div>
 
             {/* Cambiar contraseña toggle */}
-            <div className={`rounded-xl border ${darkMode ? 'border-gray-700' : 'border-slate-100'}`}>
+            <div className={`rounded-xl border ${darkMode ? 'border-gray-700' : 'border-slate-200'}`}>
               <button type="button"
                 onClick={() => setShowPassSection(!showPassSection)}
                 className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors rounded-xl ${darkMode ? 'text-gray-300 hover:bg-gray-700/50' : 'text-slate-700 hover:bg-slate-50'
