@@ -132,10 +132,9 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      await api.post('/auth/register-patient', { dni: patientInfo.dni, email: form.email, phone: form.phone, password: form.password })
-      setVerifyEmail(form.email)
-      setPatientStep('verify')
-      setSuccess('Cuenta creada. Revisa tu correo para verificar.')
+      const { data } = await api.post('/auth/register-patient', { dni: patientInfo.dni, email: form.email, phone: form.phone, password: form.password })
+      login(data)
+      navigate(location.state?.from?.pathname || '/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Error al crear cuenta')
     } finally { setLoading(false) }

@@ -46,7 +46,9 @@ export default function Doctors() {
   const [editingId, setEditingId] = useState(null)
   const [search, setSearch] = useState('')
   const [filterSpecialty, setFilterSpecialty] = useState('')
-  const [form, setForm] = useState({ name: '', specialty: '', phone: '', email: '', cmp: '' })
+  const [form, setForm] = useState({
+    name: '', dni: '', specialty: '', phone: '', email: '', cmp: ''
+  })
 
   const fetchDoctors = async () => {
     try {
@@ -94,6 +96,7 @@ export default function Doctors() {
     setEditingId(doctor._id)
     setForm({
       name: doctor.name || '',
+      dni: doctor.dni || '',
       specialty: doctor.specialty || '',
       phone: doctor.phone || '',
       email: doctor.email || '',
@@ -116,14 +119,15 @@ export default function Doctors() {
   const handleClose = () => {
     setShowForm(false)
     setEditingId(null)
-    setForm({ name: '', specialty: '', phone: '', email: '', cmp: '' })
+    setForm({ name: '', dni: '', specialty: '', phone: '', email: '', cmp: '' })
   }
 
   const specialties = [...new Set(doctors.map(d => d.specialty).filter(Boolean))]
 
   const filtered = doctors.filter(d =>
     (d.name?.toLowerCase().includes(search.toLowerCase()) ||
-      d.specialty?.toLowerCase().includes(search.toLowerCase())) &&
+      d.specialty?.toLowerCase().includes(search.toLowerCase()) ||
+      d.dni?.includes(search)) &&
     (filterSpecialty === '' || d.specialty === filterSpecialty)
   )
 
@@ -166,7 +170,7 @@ export default function Doctors() {
 
       {/* Filtros */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <input type="text" placeholder="Buscar médico..."
+        <input type="text" placeholder="Buscar médico o DNI..."
           value={search} onChange={(e) => setSearch(e.target.value)}
           className={`flex-1 min-w-48 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'border-slate-200'
             }`} />
@@ -206,7 +210,6 @@ export default function Doctors() {
           {filtered.map((d) => (
             <div key={d._id} className={`rounded-2xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-slate-100'
               }`}>
-              {/* Content sin banner */}
               <div className="p-5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${SPECIALTY_COLORS[d.specialty] || 'from-teal-400 to-teal-600'
@@ -223,6 +226,14 @@ export default function Doctors() {
                 </div>
 
                 <div className={`space-y-1.5 text-xs mb-4 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                  {d.dni && (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
+                      </svg>
+                      DNI: {d.dni}
+                    </div>
+                  )}
                   {d.cmp && (
                     <div className="flex items-center gap-2">
                       <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,6 +307,20 @@ export default function Doctors() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Ej: Dr. Juan Pérez" className={inputClass} />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>DNI</label>
+                  <input value={form.dni}
+                    onChange={(e) => setForm({ ...form, dni: e.target.value })}
+                    placeholder="45678901" maxLength={8} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>CMP</label>
+                  <input value={form.cmp}
+                    onChange={(e) => setForm({ ...form, cmp: e.target.value })}
+                    placeholder="12345" className={inputClass} />
+                </div>
+              </div>
               <div>
                 <label className={labelClass}>Especialidad</label>
                 <select required value={form.specialty}
@@ -322,17 +347,11 @@ export default function Doctors() {
                     placeholder="987654321" className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>CMP</label>
-                  <input value={form.cmp}
-                    onChange={(e) => setForm({ ...form, cmp: e.target.value })}
-                    placeholder="12345" className={inputClass} />
+                  <label className={labelClass}>Email</label>
+                  <input type="email" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="doctor@vitacare.com" className={inputClass} />
                 </div>
-              </div>
-              <div>
-                <label className={labelClass}>Email</label>
-                <input type="email" value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="doctor@vitacare.com" className={inputClass} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={handleClose}

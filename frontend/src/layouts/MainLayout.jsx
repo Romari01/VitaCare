@@ -6,13 +6,11 @@ import api from '../services/api'
 
 const specialties = [
   { icon: '🩺', name: 'Medicina General' },
-  { icon: '❤️', name: 'Cardiología' },
-  { icon: '👶', name: 'Pediatría' },
-  { icon: '🦴', name: 'Traumatología' },
-  { icon: '🧠', name: 'Neurología' },
-  { icon: '🌸', name: 'Ginecología' },
-  { icon: '🔬', name: 'Dermatología' },
-  { icon: '👁️', name: 'Oftalmología' },
+  { icon: '🥗', name: 'Nutricion' },
+  { icon: '🧠', name: 'Psicologia' },
+  { icon: '🦷', name: 'Odontologia' },
+  { icon: '💉', name: 'Enfermeria' },
+  { icon: '🤰', name: 'Obstetricia' },
 ]
 
 const times = [
@@ -253,19 +251,27 @@ export default function MainLayout({ children }) {
       paciente: `Eres un asistente de salud virtual del Centro de Salud Jorge Chávez de Juliaca, Perú. Ayudas a pacientes con: orientación sobre síntomas y especialidad adecuada, información sobre sus citas médicas, consejos de salud preventiva, preparación para consultas médicas. Las especialidades disponibles son: Medicina General, Nutrición, Psicología, Odontología, Enfermería y Obstetricia. Responde siempre en español, de forma amigable, clara y empática. No reemplazas a un médico real.`,
     }
 
+
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: systemPrompts[user?.role] || systemPrompts.paciente,
-          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompts[user?.role] || systemPrompts.paciente },
+            ...newMessages.map(m => ({ role: m.role, content: m.content }))
+          ],
+          max_tokens: 1000
         })
       })
+
+
       const data = await response.json()
-      const reply = data.content?.[0]?.text || 'Lo siento, no pude procesar tu mensaje.'
+      const reply = data.choices?.[0]?.message?.content || 'Lo siento, no pude procesar tu mensaje.'
       setMessages([...newMessages, { role: 'assistant', content: reply }])
     } catch (error) {
       setMessages([...newMessages, { role: 'assistant', content: 'Error al conectar. Intenta de nuevo.' }])
@@ -349,10 +355,10 @@ export default function MainLayout({ children }) {
                     <div key={path}>
                       <Link to={item.path}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${isActive
-                            ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
-                            : darkMode
-                              ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                          ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
+                          : darkMode
+                            ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                           }`}>
                         <span className={`flex-shrink-0 ${isActive ? 'text-white' : darkMode ? 'text-gray-500 group-hover:text-gray-300' : 'text-slate-400 group-hover:text-slate-600'}`}>
                           {NAV_ICONS[item.path]}
@@ -363,8 +369,8 @@ export default function MainLayout({ children }) {
                       {item.path === '/dashboard' && user?.role === 'paciente' && (
                         <button onClick={handleOpenForm}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mt-0.5 group ${showForm
-                              ? 'bg-teal-600 text-white'
-                              : darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                            ? 'bg-teal-600 text-white'
+                            : darkMode ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                             }`}>
                           <span className={`flex-shrink-0 ${showForm ? 'text-white' : darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -452,8 +458,8 @@ export default function MainLayout({ children }) {
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm ${msg.role === 'user'
-                      ? 'bg-teal-600 text-white rounded-br-sm'
-                      : darkMode ? 'bg-gray-800 text-gray-200 rounded-bl-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'
+                    ? 'bg-teal-600 text-white rounded-br-sm'
+                    : darkMode ? 'bg-gray-800 text-gray-200 rounded-bl-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'
                     }`}>
                     {msg.content}
                   </div>
@@ -530,8 +536,8 @@ export default function MainLayout({ children }) {
                     {specialties.map((s) => (
                       <button key={s.name} type="button" onClick={() => handleSpecialty(s.name)}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all hover:-translate-y-0.5 hover:shadow-md ${selectedSpecialty === s.name
-                            ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
-                            : 'border-slate-200 hover:border-teal-300 bg-white'
+                          ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
+                          : 'border-slate-200 hover:border-teal-300 bg-white'
                           }`}>
                         <span className="text-2xl">{s.icon}</span>
                         <span className={`text-xs font-medium text-center leading-tight ${selectedSpecialty === s.name ? 'text-teal-700' : 'text-slate-600'}`}>{s.name}</span>
@@ -562,8 +568,8 @@ export default function MainLayout({ children }) {
                       {doctors.map((d) => (
                         <button key={d._id} type="button" onClick={() => setSelectedDoctor(d)}
                           className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left hover:shadow-md ${selectedDoctor?._id === d._id
-                              ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
-                              : 'border-slate-200 hover:border-teal-300'
+                            ? 'border-teal-500 bg-teal-50 shadow-md shadow-teal-100'
+                            : 'border-slate-200 hover:border-teal-300'
                             }`}>
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                             {d.name?.charAt(0)}
@@ -638,10 +644,10 @@ export default function MainLayout({ children }) {
                                     <button type="button" disabled={!available}
                                       onClick={() => { setSelectedDate(day); setSelectedTime(time) }}
                                       className={`w-full py-1 rounded-lg text-xs font-medium transition-all ${isSelected
-                                          ? 'bg-teal-600 text-white shadow-sm'
-                                          : available
-                                            ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200'
-                                            : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                                        ? 'bg-teal-600 text-white shadow-sm'
+                                        : available
+                                          ? 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200'
+                                          : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                                         }`}>
                                       {time}
                                     </button>

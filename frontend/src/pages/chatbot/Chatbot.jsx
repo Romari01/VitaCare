@@ -57,18 +57,25 @@ export default function Chatbot() {
     setLoading(true)
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+        },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...newMessages.map(m => ({ role: m.role, content: m.content }))
+          ],
+          max_tokens: 1000
         })
       })
+
       const data = await response.json()
-      const reply = data.content?.[0]?.text || 'Lo siento, no pude procesar tu mensaje.'
+      const reply = data.choices?.[0]?.message?.content || 'Lo siento, no pude procesar tu mensaje.'
+
       setMessages([...newMessages, { role: 'assistant', content: reply }])
     } catch (error) {
       setMessages([...newMessages, { role: 'assistant', content: 'Error al conectar con el asistente. Intenta de nuevo.' }])
@@ -129,8 +136,8 @@ export default function Chatbot() {
                   </div>
                 )}
                 <div className={`max-w-sm lg:max-w-lg px-4 py-3 rounded-2xl text-sm leading-relaxed ${m.role === 'user'
-                    ? 'bg-teal-600 text-white rounded-br-sm'
-                    : darkMode ? 'bg-gray-700 text-gray-200 rounded-bl-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'
+                  ? 'bg-teal-600 text-white rounded-br-sm'
+                  : darkMode ? 'bg-gray-700 text-gray-200 rounded-bl-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'
                   }`}>
                   {m.content.split('\n').map((line, j) => (
                     <p key={j} className={j > 0 ? 'mt-1' : ''}>{line}</p>
@@ -167,8 +174,8 @@ export default function Chatbot() {
             {suggestions.map(s => (
               <button key={s} onClick={() => sendMessage(s)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${darkMode
-                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-                    : 'border-teal-200 text-teal-600 hover:bg-teal-50'
+                  ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                  : 'border-teal-200 text-teal-600 hover:bg-teal-50'
                   }`}>
                 {s}
               </button>
@@ -194,9 +201,8 @@ export default function Chatbot() {
           </div>
         </div>
 
-        {/* Info */}
         <p className={`text-xs text-center mt-3 ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
-          🤖 Asistente impulsado por Claude AI — VitaCare {new Date().getFullYear()}
+          🤖 Asistente impulsado por Gemini AI — VitaCare {new Date().getFullYear()}
         </p>
       </div>
     </div>
